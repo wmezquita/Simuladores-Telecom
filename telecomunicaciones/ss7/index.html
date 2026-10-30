@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Conmutación de Circuitos con SS7 / STPs y Audio PSTN</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --panel-border: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-green: #2ea043;
+            --accent-green-bright: #3fb950;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --ss7-color: #d2a8ff;
+            --voice-color: #3fb950;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .plane-legend {
+            display: flex;
+            gap: 16px;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-ss7 {
+            background-color: var(--accent-purple);
+            border-top: 1px dashed var(--accent-purple);
+        }
+
+        .legend-voice {
+            background-color: var(--accent-green-bright);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 310px 1fr 330px;
+            gap: 16px;
+            flex-grow: 1;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #ffffff;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        select, button {
+            background-color: #21262d;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:hover, button:hover {
+            border-color: #8b949e;
+        }
+
+        button.btn-primary {
+            background-color: var(--accent-green);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        button.btn-primary:hover {
+            background-color: var(--accent-green-bright);
+        }
+
+        button.btn-step {
+            background-color: #1f6feb;
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+
+        button.btn-step:hover {
+            background-color: #388bfd;
+        }
+
+        button.btn-danger {
+            background-color: #21262d;
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
+        button.btn-danger:hover {
+            background-color: rgba(248, 81, 73, 0.1);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .phone-display {
+            background-color: #0d1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .phone-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .status-dot.active {
+            background-color: var(--accent-green-bright);
+            box-shadow: 0 0 8px var(--accent-green-bright);
+        }
+
+        .status-dot.ringing {
+            background-color: var(--accent-orange);
+            animation: blink 0.8s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.3; }
+        }
+
+        .diagram-container {
+            position: relative;
+            background-color: #080c10;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        svg#network-svg {
+            width: 100%;
+            height: 100%;
+            min-height: 520px;
+        }
+
+        .node-ssp {
+            fill: #1f242d;
+            stroke: var(--accent-blue);
+            stroke-width: 2;
+        }
+
+        .node-stp {
+            fill: #271d3b;
+            stroke: var(--accent-purple);
+            stroke-width: 2;
+        }
+
+        .node-phone {
+            fill: #21262d;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+        }
+
+        .link-voice {
+            stroke: #30363d;
+            stroke-width: 3;
+            transition: stroke 0.3s;
+        }
+
+        .link-voice.active {
+            stroke: var(--accent-green-bright);
+            stroke-width: 4;
+            filter: drop-shadow(0 0 5px var(--accent-green-bright));
+        }
+
+        .link-ss7 {
+            stroke: #483266;
+            stroke-width: 2;
+            stroke-dasharray: 4, 4;
+            transition: stroke 0.3s;
+        }
+
+        .link-ss7.active {
+            stroke: var(--accent-purple);
+            stroke-width: 2.5;
+            filter: drop-shadow(0 0 5px var(--accent-purple));
+        }
+
+        .packet-ss7 {
+            fill: var(--accent-purple);
+            filter: drop-shadow(0 0 6px var(--accent-purple));
+        }
+
+        .packet-ss7-text {
+            fill: #ffffff;
+            font-size: 10px;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .console {
+            background-color: #0d1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.75rem;
+            padding: 8px;
+            height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .log-entry {
+            line-height: 1.3;
+            word-break: break-all;
+        }
+
+        .log-ss7 { color: var(--ss7-color); }
+        .log-voice { color: var(--voice-color); }
+        .log-sys { color: var(--accent-blue); }
+        .log-warn { color: var(--accent-orange); }
+
+        .trunk-monitor {
+            background-color: #0d1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .channels-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+        }
+
+        .channel-box {
+            height: 18px;
+            background-color: #21262d;
+            border: 1px solid var(--panel-border);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            color: var(--text-muted);
+        }
+
+        .channel-box.busy {
+            background-color: var(--accent-green);
+            color: white;
+            border-color: var(--accent-green-bright);
+            font-weight: bold;
+        }
+
+        .info-card {
+            background-color: rgba(88, 166, 255, 0.05);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            line-height: 1.35;
+        }
+
+        .badge {
+            font-size: 0.68rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .badge-ss7 { background: rgba(163, 113, 247, 0.2); color: var(--accent-purple); border: 1px solid var(--accent-purple); }
+        .badge-voice { background: rgba(46, 160, 67, 0.2); color: var(--accent-green-bright); border: 1px solid var(--accent-green-bright); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Simulador de Conmutación de Circuitos (Señalización ISUP / STPs)</h1>
+            <div class="subtitle">Separación de Planos de Control y Voz con Animación Bidireccional de Mensajes y Audio PSTN</div>
+        </div>
+        <div class="plane-legend">
+            <div class="legend-item">
+                <div class="legend-line legend-ss7"></div>
+                <span>Control (SS7 / STPs)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line legend-voice"></div>
+                <span>Voz (Troncal TDM DS0)</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        
+        <div class="panel">
+            <div class="panel-title">
+                <span>Parámetros de Llamada</span>
+                <span class="badge badge-ss7">PSTN / ISUP</span>
+            </div>
+
+            <div class="control-group">
+                <label for="scenario">Escenario de Red:</label>
+                <select id="scenario" onchange="changeScenario()">
+                    <option value="1">1. Local (Misma Central SSP-A Mérida)</option>
+                    <option value="2">2. Intercentral Urbana (Mérida a Mérida 2 vía STP)</option>
+                    <option value="3" selected>3. Larga Distancia (Mérida a CDMX vía STPs)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="dest-state">Estado de la Línea Destino (Teléfono B):</label>
+                <select id="dest-state" onchange="resetCallState()">
+                    <option value="FREE" selected>Línea Desocupada (Libre)</option>
+                    <option value="BUSY">Línea Ocupada (Busy)</option>
+                </select>
+            </div>
+
+            <div class="info-card" id="scenario-desc">
+                Llamada de Larga Distancia entre Teléfono A (Mérida) y B (CDMX). La señalización viaja bidireccionalmente por los STPs mientras la voz utiliza una troncal TDM conmutada.
+            </div>
+
+            <div class="phone-display">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.85rem;" id="phone-a-title">Teléfono A (Mérida)</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);">999-920-1122</div>
+                </div>
+                <div class="phone-status">
+                    <div class="status-dot" id="dot-a"></div>
+                    <span id="state-a" style="font-size: 0.75rem;">En Gancho</span>
+                </div>
+            </div>
+
+            <div class="phone-display">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.85rem;" id="phone-b-title">Teléfono B (CDMX)</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);">555-534-8899</div>
+                </div>
+                <div class="phone-status">
+                    <div class="status-dot" id="dot-b"></div>
+                    <span id="state-b" style="font-size: 0.75rem;">En Gancho</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
+                <button class="btn-step" id="btn-next-step" onclick="executeNextStep()">⏭ Paso a Paso (Paso 1)</button>
+                <button class="btn-primary" id="btn-auto-call" onclick="startAutoCall()">▶ Iniciar Llamada Automática</button>
+                <button class="btn-danger" id="btn-hangup" onclick="hangupCall()" disabled>Colgar (Release)</button>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+                    <label style="font-size: 0.75rem; cursor: pointer;">
+                        <input type="checkbox" id="chk-audio" checked> Audio PSTN / Voz
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <svg id="network-svg" viewBox="0 0 800 520">
+                <defs>
+                    <filter id="glow-ss7" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+
+                <g id="voice-links">
+                    <line id="link-v-a" class="link-voice" x1="80" y1="420" x2="200" y2="350" />
+                    <line id="link-v-b" class="link-voice" x1="720" y1="420" x2="600" y2="350" />
+                    <line id="link-v-b-local" class="link-voice" x1="720" y1="420" x2="200" y2="350" />
+                    <line id="link-v-ab" class="link-voice" x1="200" y1="350" x2="600" y2="350" />
+                    <line id="link-v-at" class="link-voice" x1="200" y1="350" x2="400" y2="350" />
+                    <line id="link-v-tb" class="link-voice" x1="400" y1="350" x2="600" y2="350" />
+                </g>
+
+                <g id="ss7-links">
+                    <line id="link-s-a-stpa" class="link-ss7" x1="200" y1="350" x2="200" y2="150" />
+                    <line id="link-s-b-stpb" class="link-ss7" x1="600" y1="350" x2="600" y2="150" />
+                    <line id="link-s-stpa-sspb" class="link-ss7" x1="200" y1="150" x2="600" y2="350" />
+                    <line id="link-s-t-stpn" class="link-ss7" x1="400" y1="350" x2="400" y2="150" />
+                    <line id="link-s-stpa-stpn" class="link-ss7" x1="200" y1="150" x2="400" y2="150" />
+                    <line id="link-s-stpn-stpb" class="link-ss7" x1="400" y1="150" x2="600" y2="150" />
+                    <line id="link-s-stpa-stpb" class="link-ss7" x1="200" y1="150" x2="600" y2="150" />
+                </g>
+
+                <g class="node-group" id="node-phone-a">
+                    <circle cx="80" cy="420" r="22" class="node-phone" />
+                    <text x="80" y="425" text-anchor="middle" fill="#fff" font-size="16">☎</text>
+                    <text x="80" y="458" text-anchor="middle" fill="var(--text-main)" font-size="11" font-weight="bold">Teléfono A</text>
+                    <text x="80" y="472" text-anchor="middle" fill="var(--text-muted)" font-size="9" id="svg-phone-a-sub">Mérida</text>
+                </g>
+
+                <g class="node-group" id="node-phone-b">
+                    <circle cx="720" cy="420" r="22" class="node-phone" />
+                    <text x="720" y="425" text-anchor="middle" fill="#fff" font-size="16">☎</text>
+                    <text x="720" y="458" text-anchor="middle" fill="var(--text-main)" font-size="11" font-weight="bold">Teléfono B</text>
+                    <text x="720" y="472" text-anchor="middle" fill="var(--text-muted)" font-size="9" id="svg-phone-b-sub">CDMX</text>
+                </g>
+
+                <g class="node-group" id="node-ssp-a">
+                    <rect x="160" y="320" width="80" height="60" rx="6" class="node-ssp" />
+                    <text x="200" y="348" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">SSP Local A</text>
+                    <text x="200" y="364" text-anchor="middle" fill="var(--accent-blue)" font-size="9" id="svg-ssp-a-sub">Mérida</text>
+                </g>
+
+                <g class="node-group" id="node-ssp-t">
+                    <rect x="360" y="320" width="80" height="60" rx="6" class="node-ssp" id="rect-ssp-t" />
+                    <text x="400" y="348" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">SSP Transit</text>
+                    <text x="400" y="364" text-anchor="middle" fill="var(--accent-blue)" font-size="9">Tándem L.D.</text>
+                </g>
+
+                <g class="node-group" id="node-ssp-b">
+                    <rect x="560" y="320" width="80" height="60" rx="6" class="node-ssp" />
+                    <text x="600" y="348" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">SSP Local B</text>
+                    <text x="600" y="364" text-anchor="middle" fill="var(--accent-blue)" font-size="9" id="svg-ssp-b-sub">CDMX</text>
+                </g>
+
+                <g class="node-group" id="node-stp-a">
+                    <polygon points="200,120 225,150 200,180 175,150" class="node-stp" />
+                    <text x="200" y="154" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">STP</text>
+                    <text x="200" y="105" text-anchor="middle" fill="var(--accent-purple)" font-size="10" font-weight="bold">STP Mérida</text>
+                </g>
+
+                <g class="node-group" id="node-stp-n">
+                    <polygon points="400,120 425,150 400,180 375,150" class="node-stp" id="poly-stp-n" />
+                    <text x="400" y="154" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">STP</text>
+                    <text x="400" y="105" text-anchor="middle" fill="var(--accent-purple)" font-size="10" font-weight="bold">STP Nacional</text>
+                </g>
+
+                <g class="node-group" id="node-stp-b">
+                    <polygon points="600,120 625,150 600,180 575,150" class="node-stp" id="poly-stp-b" />
+                    <text x="600" y="154" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">STP</text>
+                    <text x="600" y="105" text-anchor="middle" fill="var(--accent-purple)" font-size="10" font-weight="bold" id="svg-stp-b-sub">STP CDMX</text>
+                </g>
+
+                <g id="ss7-packet-group" opacity="0">
+                    <circle id="ss7-packet" r="14" class="packet-ss7" />
+                    <text id="ss7-packet-label" class="packet-ss7-text" y="3">IAM</text>
+                </g>
+
+                <rect x="230" y="470" width="340" height="30" rx="15" fill="#161b22" stroke="var(--panel-border)" />
+                <text x="400" y="489" id="circuit-status-text" text-anchor="middle" fill="var(--text-muted)" font-size="11">Estado: Reposo (Circuito Desconectado)</text>
+            </svg>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <span>Monitor de Red SS7 / TDM</span>
+                <span class="badge badge-voice">Canal DS0</span>
+            </div>
+
+            <div>
+                <label>Ocupación Troncal TDM (E1 / 32 Canales):</label>
+                <div class="trunk-monitor" style="margin-top: 4px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.72rem;">
+                        <span>Enlace PCM Intercentral:</span>
+                        <span id="trunk-usage" style="color: var(--accent-green-bright);">1 / 32 ocupados</span>
+                    </div>
+                    <div class="channels-grid" id="channels-container"></div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+                <label>Consola de Señalización ISUP/SS7:</label>
+                <div class="console" id="console-log">
+                    <div class="log-entry log-sys">[SISTEMA] Red PSTN e infraestructura SS7/STP lista.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        class PSTNAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.currentOscs = [];
+                this.cadenceTimer = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            stopAll() {
+                if (this.cadenceTimer) clearInterval(this.cadenceTimer);
+                this.currentOscs.forEach(o => { try { o.stop(); } catch(e){} });
+                this.currentOscs = [];
+            }
+
+            playDialTone() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+                
+                const o1 = this.ctx.createOscillator();
+                const o2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                o1.frequency.value = 350;
+                o2.frequency.value = 440;
+                gain.gain.value = 0.08;
+
+                o1.connect(gain); o2.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                o1.start(); o2.start();
+                this.currentOscs.push(o1, o2);
+            }
+
+            playDTMFDigit(digit) {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+
+                const dtmfFreqs = {
+                    '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+                    '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+                    '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+                    '0': [941, 1336]
+                };
+
+                const freqs = dtmfFreqs[digit] || [941, 1336];
+                const o1 = this.ctx.createOscillator();
+                const o2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                o1.frequency.value = freqs[0];
+                o2.frequency.value = freqs[1];
+                gain.gain.value = 0.12;
+
+                o1.connect(gain); o2.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                o1.start(); o2.start();
+                setTimeout(() => { o1.stop(); o2.stop(); }, 120);
+            }
+
+            playRingbackTone() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+
+                const playBurst = () => {
+                    const o1 = this.ctx.createOscillator();
+                    const o2 = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    o1.frequency.value = 440; o2.frequency.value = 480;
+                    gain.gain.value = 0.08;
+
+                    o1.connect(gain); o2.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    o1.start(); o2.start();
+                    setTimeout(() => { o1.stop(); o2.stop(); }, 2000);
+                };
+
+                playBurst();
+                this.cadenceTimer = setInterval(playBurst, 6000);
+            }
+
+            playBusyTone() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+
+                const playBurst = () => {
+                    const o1 = this.ctx.createOscillator();
+                    const o2 = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    o1.frequency.value = 480; o2.frequency.value = 620;
+                    gain.gain.value = 0.09;
+
+                    o1.connect(gain); o2.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    o1.start(); o2.start();
+                    setTimeout(() => { o1.stop(); o2.stop(); }, 500);
+                };
+
+                playBurst();
+                this.cadenceTimer = setInterval(playBurst, 1000);
+            }
+
+            speakFemaleGreeting() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.stopAll();
+
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance("¡Bueno!");
+                    utterance.lang = 'es-MX';
+                    utterance.pitch = 1.3;
+                    utterance.rate = 1.0;
+                    
+                    const voices = window.speechSynthesis.getVoices();
+                    const femaleVoice = voices.find(v => v.lang.includes('es') && (v.name.includes('Sabina') || v.name.includes('Monica') || v.name.includes('Paulina') || v.name.includes('Google español')));
+                    if (femaleVoice) utterance.voice = femaleVoice;
+
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+        }
+
+        const audio = new PSTNAudioEngine();
+
+        let currentScenario = "3";
+        let stepIndex = 0;
+        let isAutoRunning = false;
+        let animationTimer = null;
+
+        const scenarioSelect = document.getElementById('scenario');
+        const destStateSelect = document.getElementById('dest-state');
+        const scenarioDesc = document.getElementById('scenario-desc');
+        const btnNextStep = document.getElementById('btn-next-step');
+        const btnAutoCall = document.getElementById('btn-auto-call');
+        const btnHangup = document.getElementById('btn-hangup');
+        const consoleLog = document.getElementById('console-log');
+        const circuitStatusText = document.getElementById('circuit-status-text');
+        
+        const packetGroup = document.getElementById('ss7-packet-group');
+        const packetCircle = document.getElementById('ss7-packet');
+        const packetLabel = document.getElementById('ss7-packet-label');
+
+        const channelsContainer = document.getElementById('channels-container');
+        for (let i = 1; i <= 16; i++) {
+            const box = document.createElement('div');
+            box.className = 'channel-box' + (i === 5 ? ' busy' : '');
+            box.innerText = i === 5 ? 'TS5' : i;
+            box.id = `ch-${i}`;
+            channelsContainer.appendChild(box);
+        }
+
+        function log(msg, type = 'sys') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            entry.innerText = `[${time}] ${msg}`;
+            consoleLog.appendChild(entry);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function changeScenario() {
+            resetCallState();
+            currentScenario = scenarioSelect.value;
+            
+            const nodeSSPB = document.getElementById('node-ssp-b');
+            const nodeSTPB = document.getElementById('node-stp-b');
+            const nodeSTPN = document.getElementById('node-stp-n');
+            const nodeSSPT = document.getElementById('node-ssp-t');
+
+            const linkVB = document.getElementById('link-v-b');
+            const linkVBLocal = document.getElementById('link-v-b-local');
+            const linkVAB = document.getElementById('link-v-ab');
+            const linkVAT = document.getElementById('link-v-at');
+            const linkVTB = document.getElementById('link-v-tb');
+
+            const linkSBSTPB = document.getElementById('link-s-b-stpb');
+            const linkSSTPASSPB = document.getElementById('link-s-stpa-sspb');
+
+            if (currentScenario === "1") {
+                scenarioDesc.innerText = "Escenario 1 (Local): Ambos teléfonos en la misma Central Local SSP A (Mérida). La conmutación de circuito de voz es puramente interna.";
+                
+                document.getElementById('phone-b-title').innerText = "Teléfono B (Mérida)";
+                document.getElementById('svg-phone-b-sub').textContent = "Mérida";
+                document.getElementById('svg-ssp-a-sub').textContent = "Mérida";
+
+                nodeSSPB.style.opacity = "0.15";
+                nodeSTPB.style.opacity = "0.15";
+                nodeSTPN.style.opacity = "0.15";
+                nodeSSPT.style.opacity = "0.15";
+
+                linkVBLocal.style.opacity = "1";
+                linkVB.style.opacity = "0.15";
+                linkVAB.style.opacity = "0.15";
+                linkVAT.style.opacity = "0.15";
+                linkVTB.style.opacity = "0.15";
+                linkSBSTPB.style.opacity = "0.15";
+                linkSSTPASSPB.style.opacity = "0.15";
+
+            } else if (currentScenario === "2") {
+                scenarioDesc.innerText = "Escenario 2 (Intercentral Urbana): Teléfono A (Mérida) a Teléfono B (Mérida 2). La señalización pasa por STP Mérida hacia SSP Local B, con voz por la troncal directa.";
+                
+                document.getElementById('phone-b-title').innerText = "Teléfono B (Mérida 2)";
+                document.getElementById('svg-phone-b-sub').textContent = "Mérida 2";
+                document.getElementById('svg-ssp-a-sub').textContent = "Mérida";
+                document.getElementById('svg-ssp-b-sub').textContent = "Mérida 2";
+
+                nodeSSPB.style.opacity = "1";
+                nodeSTPB.style.opacity = "0.15";
+                nodeSTPN.style.opacity = "0.15";
+                nodeSSPT.style.opacity = "0.15";
+
+                linkVBLocal.style.opacity = "0.15";
+                linkVB.style.opacity = "1";
+                linkVAB.style.opacity = "1";
+                linkVAT.style.opacity = "0.15";
+                linkVTB.style.opacity = "0.15";
+                linkSBSTPB.style.opacity = "0.15";
+                linkSSTPASSPB.style.opacity = "1";
+
+            } else {
+                scenarioDesc.innerText = "Escenario 3 (Larga Distancia): Teléfono A (Mérida) a Teléfono B (CDMX). Señalización jerárquica por STPs (Mérida -> Nacional -> CDMX) y voz conmutada por Central Transit.";
+                
+                document.getElementById('phone-b-title').innerText = "Teléfono B (CDMX)";
+                document.getElementById('svg-phone-b-sub').textContent = "CDMX";
+                document.getElementById('svg-ssp-a-sub').textContent = "Mérida";
+                document.getElementById('svg-ssp-b-sub').textContent = "CDMX";
+                document.getElementById('svg-stp-b-sub').textContent = "STP CDMX";
+
+                nodeSSPB.style.opacity = "1";
+                nodeSTPB.style.opacity = "1";
+                nodeSTPN.style.opacity = "1";
+                nodeSSPT.style.opacity = "1";
+
+                linkVBLocal.style.opacity = "0.15";
+                linkVB.style.opacity = "1";
+                linkVAB.style.opacity = "0.15";
+                linkVAT.style.opacity = "1";
+                linkVTB.style.opacity = "1";
+                linkSBSTPB.style.opacity = "1";
+                linkSSTPASSPB.style.opacity = "0.15";
+            }
+            log(`Escenario configurado: Opción ${currentScenario}`, 'sys');
+        }
+
+        function animateSS7Packet(label, pathPoints, duration, onComplete) {
+            if (animationTimer) cancelAnimationFrame(animationTimer);
+            
+            packetLabel.textContent = label;
+            packetGroup.setAttribute('opacity', '1');
+
+            let start = null;
+
+            function step(timestamp) {
+                if (!start) start = timestamp;
+                let progress = (timestamp - start) / duration;
+                if (progress > 1) progress = 1;
+
+                const totalSegments = pathPoints.length - 1;
+                const segmentProgress = progress * totalSegments;
+                const currentSeg = Math.min(Math.floor(segmentProgress), totalSegments - 1);
+                const subProgress = segmentProgress - currentSeg;
+
+                const p1 = pathPoints[currentSeg];
+                const p2 = pathPoints[currentSeg + 1];
+
+                const x = p1.x + (p2.x - p1.x) * subProgress;
+                const y = p1.y + (p2.y - p1.y) * subProgress;
+
+                packetGroup.setAttribute('transform', `translate(${x}, ${y})`);
+
+                if (progress < 1) {
+                    animationTimer = requestAnimationFrame(step);
+                } else {
+                    packetGroup.setAttribute('opacity', '0');
+                    if (onComplete) onComplete();
+                }
+            }
+            animationTimer = requestAnimationFrame(step);
+        }
+
+        function getSS7Path(direction = 'FORWARD') {
+            const P_SSPA = { x: 200, y: 350 };
+            const P_STPA = { x: 200, y: 150 };
+            const P_STPN = { x: 400, y: 150 };
+            const P_STPB = { x: 600, y: 150 };
+            const P_SSPB = { x: 600, y: 350 };
+
+            let path = [];
+            if (currentScenario === "1") {
+                path = [P_SSPA, P_SSPA];
+            } else if (currentScenario === "2") {
+                path = [P_SSPA, P_STPA, P_SSPB];
+            } else {
+                path = [P_SSPA, P_STPA, P_STPN, P_STPB, P_SSPB];
+            }
+
+            return direction === 'FORWARD' ? path : path.reverse();
+        }
+
+        function executeNextStep() {
+            stepIndex++;
+
+            if (stepIndex === 1) {
+                btnHangup.disabled = false;
+                document.getElementById('dot-a').className = 'status-dot active';
+                document.getElementById('state-a').innerText = 'Descolgado';
+                circuitStatusText.innerText = "Paso 1: Off-Hook (Recibiendo Tono de Línea)";
+                circuitStatusText.setAttribute('fill', 'var(--accent-blue)');
+                
+                log('Teléfono A descolgado (Off-Hook). Tono de línea activo.', 'voice');
+                audio.playDialTone();
+                btnNextStep.innerText = "⏭ Paso 2: Marcar Dígitos (DTMF)";
+
+            } else if (stepIndex === 2) {
+                circuitStatusText.innerText = "Paso 2: Marcando Dígitos (DTMF)";
+                log('Enviando dígitos multifrecuencia DTMF...', 'voice');
+                
+                let dIdx = 0;
+                const digits = ['5','5','5','5','3','4','8','8','9','9'];
+                const interval = setInterval(() => {
+                    audio.playDTMFDigit(digits[dIdx]);
+                    dIdx++;
+                    if (dIdx >= digits.length) {
+                        clearInterval(interval);
+                        btnNextStep.innerText = "⏭ Paso 3: Enviar ISUP IAM por STPs";
+                        if (isAutoRunning) setTimeout(executeNextStep, 800);
+                    }
+                }, 180);
+
+            } else if (stepIndex === 3) {
+                audio.stopAll();
+                circuitStatusText.innerText = "Paso 3: Enviando ISUP IAM (Ida por Red de STPs)";
+                circuitStatusText.setAttribute('fill', 'var(--accent-purple)');
+                log('[SS7 ISUP] Enviando mensaje IAM (Initial Address Message) hacia la red...', 'ss7');
+
+                const path = getSS7Path('FORWARD');
+                animateSS7Packet('IAM', path, 2200, () => {
+                    log('[SS7] IAM recibido en la Central Destino. Canal DS0 reservado.', 'ss7');
+                    
+                    if (destStateSelect.value === 'BUSY') {
+                        btnNextStep.innerText = "⏭ Respuesta: Línea Ocupada (REL)";
+                        btnNextStep.disabled = true;
+                        log('[SS7] Línea B OCUPADA. Retornando tono de ocupado.', 'warn');
+                        audio.playBusyTone();
+                        circuitStatusText.innerText = "Línea B Ocupada (Tono Ocupado Inyectado)";
+                        circuitStatusText.setAttribute('fill', 'var(--accent-orange)');
+                    } else {
+                        btnNextStep.innerText = "⏭ Paso 4: Recibir ISUP ACM de Regreso";
+                        if (isAutoRunning) setTimeout(executeNextStep, 600);
+                    }
+                });
+
+            } else if (stepIndex === 4) {
+                circuitStatusText.innerText = "Paso 4: Recibiendo ISUP ACM (Regreso por STPs)";
+                log('[SS7 ISUP] Central Destino envía respuesta ACM (Address Complete Message)...', 'ss7');
+
+                const returnPath = getSS7Path('BACKWARD');
+                animateSS7Packet('ACM', returnPath, 2000, () => {
+                    log('[SS7] ACM recibido en Central Origen. Iniciando Timbrado y Ringback.', 'ss7');
+                    document.getElementById('dot-b').className = 'status-dot ringing';
+                    document.getElementById('state-b').innerText = 'Timbrando...';
+                    
+                    audio.playRingbackTone();
+                    circuitStatusText.innerText = "Paso 4: Timbrando en Destino (Ringback Tone)";
+                    circuitStatusText.setAttribute('fill', 'var(--accent-orange)');
+                    
+                    btnNextStep.innerText = "⏭ Paso 5: Contestar y enviar ANM";
+                    if (isAutoRunning) setTimeout(executeNextStep, 2500);
+                });
+
+            } else if (stepIndex === 5) {
+                audio.stopAll();
+                circuitStatusText.innerText = "Paso 5: Teléfono B Descuelga y Dice '¡Bueno!'";
+                log('Teléfono B descuelga la llamada.', 'voice');
+                
+                document.getElementById('dot-b').className = 'status-dot active';
+                document.getElementById('state-b').innerText = 'En Llamada';
+                
+                audio.speakFemaleGreeting();
+
+                log('[SS7 ISUP] Enviando mensaje ANM (Answer Message) de regreso por STPs...', 'ss7');
+                const returnPath = getSS7Path('BACKWARD');
+                
+                animateSS7Packet('ANM', returnPath, 1800, () => {
+                    log('[SS7] ANM verificado. Conmutando plano de usuario (Troncal TDM).', 'ss7');
+                    connectVoiceTrunk();
+                    btnNextStep.innerText = "Llamada Conectada (En Curso)";
+                    btnNextStep.disabled = true;
+                });
+            }
+        }
+
+        function connectVoiceTrunk() {
+            if (currentScenario === "1") {
+                document.getElementById('link-v-a').classList.add('active');
+                document.getElementById('link-v-b-local').classList.add('active');
+            } else if (currentScenario === "2") {
+                document.getElementById('link-v-a').classList.add('active');
+                document.getElementById('link-v-ab').classList.add('active');
+                document.getElementById('link-v-b').classList.add('active');
+            } else {
+                document.getElementById('link-v-a').classList.add('active');
+                document.getElementById('link-v-at').classList.add('active');
+                document.getElementById('link-v-tb').classList.add('active');
+                document.getElementById('link-v-b').classList.add('active');
+            }
+
+            document.getElementById('ch-12').className = 'channel-box busy';
+            document.getElementById('ch-12').innerText = 'TS12';
+
+            circuitStatusText.innerText = "Circuito de Voz Establecido (PCM 64 kbps)";
+            circuitStatusText.setAttribute('fill', 'var(--accent-green-bright)');
+            log('[VOZ] Circuito bi-direccional de voz activo. Transmisión TDM en curso.', 'voice');
+        }
+
+        function startAutoCall() {
+            if (stepIndex !== 0) resetCallState();
+            isAutoRunning = true;
+            btnAutoCall.disabled = true;
+            executeNextStep();
+        }
+
+        function hangupCall() {
+            audio.stopAll();
+            isAutoRunning = false;
+            
+            log('[SS7 ISUP] Iniciando liberación. Enviando paquete REL (Release)...', 'ss7');
+            
+            const path = getSS7Path('FORWARD');
+            animateSS7Packet('REL', path, 1600, () => {
+                log('[SS7 ISUP] REL recibido. Liberando canal DS0 y enviando RLC (Release Complete)...', 'ss7');
+                
+                const returnPath = getSS7Path('BACKWARD');
+                animateSS7Packet('RLC', returnPath, 1400, () => {
+                    log('[SS7] RLC confirmado. Todos los recursos TDM liberados a reposo.', 'ss7');
+                    resetCallState();
+                });
+            });
+        }
+
+        function resetCallState() {
+            audio.stopAll();
+            if (animationTimer) cancelAnimationFrame(animationTimer);
+            
+            stepIndex = 0;
+            isAutoRunning = false;
+
+            document.getElementById('dot-a').className = 'status-dot';
+            document.getElementById('state-a').innerText = 'En Gancho';
+            document.getElementById('dot-b').className = 'status-dot';
+            document.getElementById('state-b').innerText = 'En Gancho';
+
+            document.querySelectorAll('.link-voice').forEach(el => el.classList.remove('active'));
+            packetGroup.setAttribute('opacity', '0');
+
+            document.getElementById('ch-12').className = 'channel-box';
+            document.getElementById('ch-12').innerText = '12';
+
+            btnNextStep.innerText = "⏭ Paso a Paso (Paso 1)";
+            btnNextStep.disabled = false;
+            btnAutoCall.disabled = false;
+            btnHangup.disabled = true;
+
+            circuitStatusText.innerText = "Estado: Reposo (Circuito Desconectado)";
+            circuitStatusText.setAttribute('fill', 'var(--text-muted)');
+        }
+
+        changeScenario();
+    </script>
+</body>
+</html>

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hamming Code Interactive Visualizer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        parity: {
+                            light: '#e0e7ff',
+                            DEFAULT: '#6366f1',
+                            dark: '#4338ca',
+                            text: '#312e81'
+                        },
+                        data: {
+                            light: '#ecfdf5',
+                            DEFAULT: '#10b981',
+                            dark: '#047857',
+                            text: '#064e3b'
+                        },
+                        error: {
+                            light: '#fef2f2',
+                            DEFAULT: '#ef4444',
+                            dark: '#b91c1c',
+                            text: '#7f1d1d'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom smooth scrollbar */
+        ::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .bit-box {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .bit-box:hover {
+            transform: translateY(-2px);
+        }
+
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.03); }
+        }
+
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header Section -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-gradient-to-tr from-indigo-600 to-emerald-500 rounded-xl shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-microchip text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                        Explorador de Código Hamming
+                    </h1>
+                    <p class="text-xs text-slate-400">Codificación, Detección y Corrección de Errores SECDED (1 a 16 bits)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 text-xs font-medium">
+                <span class="px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                    Bits Paridad (P)
+                </span>
+                <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Bits Datos (D)
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+
+        <!-- Controls & Input Panel -->
+        <section class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+                
+                <!-- Binary Input -->
+                <div class="lg:col-span-5 space-y-2">
+                    <label for="data-input" class="block text-sm font-semibold text-slate-300 flex justify-between items-center">
+                        <span><i class="fa-solid fa-binary text-indigo-400 mr-2"></i>Datos Binarios de Entrada (m)</span>
+                        <span id="input-length-badge" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">8 bits</span>
+                    </label>
+                    <div class="relative flex items-center">
+                        <input type="text" id="data-input" value="10110101" maxlength="16" placeholder="Ingresa de 1 a 16 unos y ceros"
+                            class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-emerald-400 font-mono tracking-widest text-lg font-bold outline-none transition placeholder:text-slate-600 placeholder:font-sans placeholder:text-sm placeholder:font-normal"
+                            oninput="validateAndProcessInput()">
+                        <button onclick="generateRandomBits()" title="Generar bits aleatorios" class="absolute right-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-700">
+                            <i class="fa-solid fa-dice text-indigo-400"></i>
+                            <span>Aleatorio</span>
+                        </button>
+                    </div>
+                    <p id="input-error" class="text-xs text-rose-400 hidden"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Solo se permiten caracteres binarios (0 y 1) de 1 a 16 bits.</p>
+                </div>
+
+                <!-- Parity Mode Config -->
+                <div class="lg:col-span-4 space-y-2">
+                    <label class="block text-sm font-semibold text-slate-300">
+                        <i class="fa-solid fa-sliders text-indigo-400 mr-2"></i>Modo de Paridad
+                    </label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-xl border border-slate-700">
+                        <button id="parity-even-btn" onclick="setParityMode('even')" class="py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                            <span>PAR (Even)</span>
+                        </button>
+                        <button id="parity-odd-btn" onclick="setParityMode('odd')" class="py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-scale-unbalanced"></i>
+                            <span>IMPAR (Odd)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Stats Badge -->
+                <div class="lg:col-span-3 bg-slate-900/60 rounded-xl p-4 border border-slate-700/50 flex flex-col justify-center space-y-1">
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span>Bits de Datos (m):</span>
+                        <span id="stat-m" class="font-mono text-emerald-400 font-bold">8</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span>Bits Paridad req. (r):</span>
+                        <span id="stat-r" class="font-mono text-indigo-400 font-bold">5</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-400 pt-1 border-t border-slate-800">
+                        <span>Longitud Total (n = m+r):</span>
+                        <span id="stat-n" class="font-mono text-white font-bold">13 bits</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Mathematical Formula Banner -->
+        <section class="bg-indigo-950/40 border border-indigo-800/40 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-900/60 rounded-lg text-indigo-300">
+                    <i class="fa-solid fa-calculator text-base"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-indigo-200">Condición Fundamental de Hamming:</span>
+                    <span class="font-mono text-indigo-300 ml-2 text-sm bg-indigo-900/40 px-2.5 py-0.5 rounded border border-indigo-700/50">2<sup>r</sup> ≥ m + r + 1</span>
+                </div>
+            </div>
+            <div id="formula-breakdown" class="font-mono text-slate-300 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 text-center">
+                <!-- Dynamic calculation equation -->
+            </div>
+        </section>
+
+        <!-- Hamming Code Output & Bit Matrix -->
+        <section class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-slate-700/60">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table-cells text-emerald-400"></i>
+                        Estructura del Código Hamming Generado
+                    </h2>
+                    <p class="text-xs text-slate-400">Ubicación de bits de datos y bits de paridad en potencias de 2 (1, 2, 4, 8, 16)</p>
+                </div>
+                <div class="text-xs text-slate-400 font-mono bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                    Vector: <span id="vector-output" class="text-white font-bold tracking-widest"></span>
+                </div>
+            </div>
+
+            <!-- Bit Cards Display -->
+            <div class="overflow-x-auto pb-4">
+                <div id="bit-grid" class="flex gap-2 min-w-max p-2">
+                    <!-- Dynamic Bit Boxes Inserted Here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Step-by-Step Parity Calculation Section -->
+        <section class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-6">
+            <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-indigo-400"></i>
+                    Cálculo Paso a Paso de los Bits de Paridad
+                </h2>
+                <p class="text-xs text-slate-400">Cada bit de paridad P<sub>2<sup>k</sup></sub> verifica las posiciones cuyos índices binarios tienen un 1 en el bit k-ésimo</p>
+            </div>
+
+            <div id="parity-steps-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Step Cards injected dynamically -->
+            </div>
+        </section>
+
+        <!-- Interactive Error Injection & Syndrome Decoder Simulator -->
+        <section class="bg-gradient-to-b from-slate-800/90 to-slate-900/90 border border-slate-700/80 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-700/60">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bug text-rose-400"></i>
+                        Simulador de Transmisión con Inyección de Errores
+                    </h2>
+                    <p class="text-xs text-slate-400">Haz clic en cualquier bit de la palabra de código recibida para "invertirlo" (simular ruido en el canal)</p>
+                </div>
+                <button onclick="resetErrorState()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-lg transition flex items-center gap-2 border border-slate-600">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>Restablecer Canal (Sin error)</span>
+                </button>
+            </div>
+
+            <!-- Interactive Received Vector Grid -->
+            <div class="space-y-3">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Palabra de Código Recibida (Haz clic para alterar un bit):</label>
+                <div class="overflow-x-auto pb-2">
+                    <div id="received-bit-grid" class="flex gap-2 min-w-max p-2">
+                        <!-- Dynamic Interactive Error Injection Grid -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Syndrome Analysis & Error Correction Output -->
+            <div id="syndrome-analysis-panel" class="bg-slate-950/80 rounded-xl p-5 border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-stethoscope text-indigo-400"></i>
+                        Análisis del Síndrome de Paridad (Syndrome Checking)
+                    </h3>
+                    <span id="syndrome-status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-check"></i> Transmisión Correcta (Sin errores)
+                    </span>
+                </div>
+
+                <div id="syndrome-checks-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+                    <!-- Individual Syndrome Bit Checks -->
+                </div>
+
+                <!-- Result & Action Summary Box -->
+                <div id="correction-result-box" class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div id="correction-icon-container" class="p-3 bg-emerald-500/20 text-emerald-400 rounded-xl">
+                            <i class="fa-solid fa-shield-check text-2xl"></i>
+                        </div>
+                        <div class="space-y-1">
+                            <div id="correction-title" class="font-bold text-slate-200 text-sm">Estado de la transmisión normal</div>
+                            <div id="correction-detail" class="text-xs text-slate-400 font-mono">Síndrome S = 00000 (Posición 0). Los datos transmitidos son 100% íntegros.</div>
+                        </div>
+                    </div>
+                    <div id="corrected-data-badge" class="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 text-right">
+                        <span class="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Datos Extraídos Corregidos:</span>
+                        <span id="extracted-data-val" class="font-mono text-emerald-400 font-bold text-base">--</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Educational Reference Section -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-6 text-slate-300 text-sm space-y-4">
+            <h3 class="font-bold text-white text-base flex items-center gap-2">
+                <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+                ¿Cómo Funciona la Codificación Hamming?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-400 leading-relaxed">
+                <div class="space-y-2 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-indigo-300 flex items-center gap-1.5 text-sm">
+                        <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 inline-flex items-center justify-center font-bold text-xs">1</span>
+                        Posicionamiento
+                    </h4>
+                    <p>Los bits de paridad se colocan exclusivamente en posiciones que son potencias de 2 (1, 2, 4, 8, 16...). Los bits de datos de la entrada llenan las posiciones restantes consecutivamente.</p>
+                </div>
+                <div class="space-y-2 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-indigo-300 flex items-center gap-1.5 text-sm">
+                        <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 inline-flex items-center justify-center font-bold text-xs">2</span>
+                        Cálculo de Paridad
+                    </h4>
+                    <p>Cada bit de paridad P<sub>2<sup>k</sup></sub> cubre las posiciones cuya representación en binario tiene un '1' en el bit k. La paridad ajusta el valor del bit para que la suma total sea par u impar según el modo seleccionado.</p>
+                </div>
+                <div class="space-y-2 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-indigo-300 flex items-center gap-1.5 text-sm">
+                        <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 inline-flex items-center justify-center font-bold text-xs">3</span>
+                        Detección y Corrección
+                    </h4>
+                    <p>El receptor vuelve a calcular las comprobaciones. El valor numérico formado por las paridades fallidas (el <strong>Síndrome</strong>) apunta directamente al índice exacto del bit alterado por ruido en el canal.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State management
+        let state = {
+            dataBits: '10110101',
+            parityMode: 'even', // 'even' or 'odd'
+            m: 8,
+            r: 5,
+            n: 13,
+            hammingVector: [], // Objects: { pos: 1-indexed, type: 'P'|'D', bitName: 'P1'|'D3', val: 0|1, isParity: bool }
+            receivedVector: [], // Same structure, but may contain an inverted bit
+            errorBitPosition: 0 // 0 means no error, 1..n indicates errored bit index
+        };
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            validateAndProcessInput();
+        });
+
+        function setParityMode(mode) {
+            state.parityMode = mode;
+            const evenBtn = document.getElementById('parity-even-btn');
+            const oddBtn = document.getElementById('parity-odd-btn');
+
+            if (mode === 'even') {
+                evenBtn.className = "py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md";
+                oddBtn.className = "py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+            } else {
+                oddBtn.className = "py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md";
+                evenBtn.className = "py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+            }
+
+            recalculateHammingCode();
+        }
+
+        function generateRandomBits() {
+            const length = Math.floor(Math.random() * 12) + 4; // 4 to 16 bits
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += Math.random() > 0.5 ? '1' : '0';
+            }
+            document.getElementById('data-input').value = result;
+            validateAndProcessInput();
+        }
+
+        function validateAndProcessInput() {
+            const inputEl = document.getElementById('data-input');
+            const errorEl = document.getElementById('input-error');
+            let val = inputEl.value.trim();
+
+            // Filter out non-binary
+            if (/[^01]/.test(val) || val.length < 1 || val.length > 16) {
+                errorEl.classList.remove('hidden');
+                if (val.length > 16) {
+                    val = val.substring(0, 16);
+                    inputEl.value = val;
+                }
+                if (/[^01]/.test(val)) return;
+            } else {
+                errorEl.classList.add('hidden');
+            }
+
+            if (val.length === 0) return;
+
+            state.dataBits = val;
+            state.m = val.length;
+            document.getElementById('input-length-badge').innerText = `${state.m} bit${state.m > 1 ? 's' : ''}`;
+
+            // Reset error state on new input
+            state.errorBitPosition = 0;
+
+            recalculateHammingCode();
+        }
+
+        function isPowerOfTwo(x) {
+            return (x & (x - 1)) === 0 && x > 0;
+        }
+
+        function calculateRequiredParityBits(m) {
+            let r = 1;
+            while (Math.pow(2, r) < (m + r + 1)) {
+                r++;
+            }
+            return r;
+        }
+
+        function recalculateHammingCode() {
+            const m = state.m;
+            const r = calculateRequiredParityBits(m);
+            const n = m + r;
+
+            state.r = r;
+            state.n = n;
+
+            // Update stats & formula UI
+            document.getElementById('stat-m').innerText = m;
+            document.getElementById('stat-r').innerText = r;
+            document.getElementById('stat-n').innerText = `${n} bits`;
+
+            const lhs = Math.pow(2, r);
+            const rhs = m + r + 1;
+            document.getElementById('formula-breakdown').innerHTML = `
+                2<sup>${r}</sup> (${lhs}) ≥ ${m} + ${r} + 1 (${rhs}) <span class="text-emerald-400 font-bold ml-1">✓ Válido</span>
+            `;
+
+            // Build Hamming Vector Template
+            let vector = new Array(n + 1); // 1-indexed for clarity
+            let dataIdx = 0;
+
+            for (let i = 1; i <= n; i++) {
+                if (isPowerOfTwo(i)) {
+                    vector[i] = {
+                        pos: i,
+                        type: 'P',
+                        bitName: `P${i}`,
+                        val: 0,
+                        isParity: true,
+                        binaryPos: i.toString(2).padStart(r, '0')
+                    };
+                } else {
+                    vector[i] = {
+                        pos: i,
+                        type: 'D',
+                        bitName: `D${i}`,
+                        val: parseInt(state.dataBits[dataIdx], 10),
+                        isParity: false,
+                        binaryPos: i.toString(2).padStart(r, '0')
+                    };
+                    dataIdx++;
+                }
+            }
+
+            // Calculate parity bits
+            for (let k = 0; k < r; k++) {
+                const parityPos = Math.pow(2, k);
+                let onesCount = 0;
+
+                // Check all positions that have a '1' in the k-th bit of their binary representation
+                for (let i = 1; i <= n; i++) {
+                    if (i !== parityPos && (i & parityPos) !== 0) {
+                        if (vector[i].val === 1) {
+                            onesCount++;
+                        }
+                    }
+                }
+
+                if (state.parityMode === 'even') {
+                    vector[parityPos].val = (onesCount % 2 === 0) ? 0 : 1;
+                } else {
+                    vector[parityPos].val = (onesCount % 2 === 0) ? 1 : 0;
+                }
+            }
+
+            state.hammingVector = vector;
+
+            // Clone to received vector (apply error if active)
+            syncReceivedVector();
+
+            // Render UI Components
+            renderGeneratedGrid();
+            renderParityStepByStep();
+            renderReceivedGridAndAnalysis();
+        }
+
+        function syncReceivedVector() {
+            state.receivedVector = JSON.parse(JSON.stringify(state.hammingVector));
+            if (state.errorBitPosition > 0 && state.errorBitPosition <= state.n) {
+                const targetBit = state.receivedVector[state.errorBitPosition];
+                targetBit.val = targetBit.val === 1 ? 0 : 1;
+            }
+        }
+
+        function renderGeneratedGrid() {
+            const gridContainer = document.getElementById('bit-grid');
+            gridContainer.innerHTML = '';
+
+            let vectorStr = '';
+
+            for (let i = 1; i <= state.n; i++) {
+                const bit = state.hammingVector[i];
+                vectorStr += bit.val;
+
+                const box = document.createElement('div');
+                box.className = `bit-box flex flex-col items-center justify-between p-3 rounded-xl border font-mono w-16 h-24 ${
+                    bit.isParity 
+                        ? 'bg-indigo-950/80 border-indigo-500/40 text-indigo-300' 
+                        : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+                }`;
+
+                box.innerHTML = `
+                    <div class="text-[10px] uppercase font-bold tracking-wider ${bit.isParity ? 'text-indigo-400' : 'text-emerald-400'}">
+                        ${bit.bitName}
+                    </div>
+                    <div class="text-2xl font-black text-white my-1">
+                        ${bit.val}
+                    </div>
+                    <div class="text-[10px] text-slate-400 border-t border-slate-700/60 pt-1 w-full text-center">
+                        Pos ${bit.pos}
+                    </div>
+                    <div class="text-[9px] text-slate-500 font-mono">
+                        ${bit.binaryPos}
+                    </div>
+                `;
+                gridContainer.appendChild(box);
+            }
+
+            document.getElementById('vector-output').innerText = vectorStr;
+        }
+
+        function renderParityStepByStep() {
+            const container = document.getElementById('parity-steps-container');
+            container.innerHTML = '';
+
+            for (let k = 0; k < state.r; k++) {
+                const parityPos = Math.pow(2, k);
+                const bitInfo = state.hammingVector[parityPos];
+
+                // Find checked positions
+                const checkedPositions = [];
+                let dataBitsChecked = [];
+                let onesCount = 0;
+
+                for (let i = 1; i <= state.n; i++) {
+                    if ((i & parityPos) !== 0) {
+                        checkedPositions.push(i);
+                        if (i !== parityPos) {
+                            const b = state.hammingVector[i];
+                            dataBitsChecked.push(`${b.bitName}(${b.val})`);
+                            if (b.val === 1) onesCount++;
+                        }
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-slate-700/60 rounded-xl p-4 space-y-3";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <span class="font-bold text-indigo-400 text-sm flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                            Bit de Paridad ${bitInfo.bitName} (Pos ${parityPos})
+                        </span>
+                        <span class="font-mono text-xs px-2 py-0.5 rounded ${bitInfo.val === 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'} font-bold">
+                            P = ${bitInfo.val}
+                        </span>
+                    </div>
+
+                    <div class="text-xs space-y-1.5 text-slate-300">
+                        <div><strong class="text-slate-400">Posiciones que cubre:</strong></div>
+                        <div class="font-mono text-[11px] text-indigo-300 bg-slate-950 p-2 rounded border border-slate-800 break-words">
+                            ${checkedPositions.join(', ')}
+                        </div>
+                    </div>
+
+                    <div class="text-xs space-y-1 text-slate-300">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Unos en datos verificados:</span>
+                            <span class="font-mono font-bold text-white">${onesCount} unos</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Modo de Paridad:</span>
+                            <span class="font-semibold text-slate-200 uppercase">${state.parityMode === 'even' ? 'PAR' : 'IMPAR'}</span>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            }
+        }
+
+        function toggleErrorOnBit(pos) {
+            if (state.errorBitPosition === pos) {
+                state.errorBitPosition = 0; // Clear error
+            } else {
+                state.errorBitPosition = pos; // Inject error
+            }
+            syncReceivedVector();
+            renderReceivedGridAndAnalysis();
+        }
+
+        function resetErrorState() {
+            state.errorBitPosition = 0;
+            syncReceivedVector();
+            renderReceivedGridAndAnalysis();
+        }
+
+        function renderReceivedGridAndAnalysis() {
+            const receivedGrid = document.getElementById('received-bit-grid');
+            receivedGrid.innerHTML = '';
+
+            for (let i = 1; i <= state.n; i++) {
+                const bit = state.receivedVector[i];
+                const isErrored = (i === state.errorBitPosition);
+
+                const box = document.createElement('button');
+                box.onclick = () => toggleErrorOnBit(i);
+                box.className = `bit-box flex flex-col items-center justify-between p-3 rounded-xl border font-mono w-16 h-24 text-left cursor-pointer select-none transition ${
+                    isErrored 
+                        ? 'bg-rose-950/90 border-rose-500 text-rose-300 ring-2 ring-rose-500/50 animate-pulse-subtle' 
+                        : bit.isParity 
+                            ? 'bg-slate-900/90 border-slate-700/80 text-indigo-300 hover:border-indigo-500/50' 
+                            : 'bg-slate-900/90 border-slate-700/80 text-emerald-300 hover:border-emerald-500/50'
+                }`;
+
+                box.innerHTML = `
+                    <div class="text-[10px] uppercase font-bold tracking-wider flex justify-between w-full items-center ${isErrored ? 'text-rose-400' : bit.isParity ? 'text-indigo-400' : 'text-emerald-400'}">
+                        <span>${bit.bitName}</span>
+                        ${isErrored ? '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>' : ''}
+                    </div>
+                    <div class="text-2xl font-black my-1 ${isErrored ? 'text-rose-400 scale-110' : 'text-white'}">
+                        ${bit.val}
+                    </div>
+                    <div class="text-[10px] text-slate-400 border-t border-slate-800 pt-1 w-full text-center">
+                        Pos ${bit.pos}
+                    </div>
+                `;
+
+                receivedGrid.appendChild(box);
+            }
+
+            // Run Syndrome Analysis
+            analyzeSyndrome();
+        }
+
+        function analyzeSyndrome() {
+            let syndromeBits = [];
+            let syndromeDecimal = 0;
+            const checksList = document.getElementById('syndrome-checks-list');
+            checksList.innerHTML = '';
+
+            for (let k = 0; k < state.r; k++) {
+                const parityPos = Math.pow(2, k);
+                let onesCount = 0;
+
+                for (let i = 1; i <= state.n; i++) {
+                    if ((i & parityPos) !== 0) {
+                        if (state.receivedVector[i].val === 1) {
+                            onesCount++;
+                        }
+                    }
+                }
+
+                let checkPassed = false;
+                if (state.parityMode === 'even') {
+                    checkPassed = (onesCount % 2 === 0);
+                } else {
+                    checkPassed = (onesCount % 2 !== 0);
+                }
+
+                const syndromeBitVal = checkPassed ? 0 : 1;
+                syndromeBits.unshift(syndromeBitVal); // Higher power parity is MSB in syndrome
+                if (!checkPassed) {
+                    syndromeDecimal += parityPos;
+                }
+
+                // Render check card
+                const checkCard = document.createElement('div');
+                checkCard.className = `p-2.5 rounded-lg border flex flex-col justify-between ${
+                    checkPassed 
+                        ? 'bg-slate-900/60 border-slate-800 text-slate-300' 
+                        : 'bg-rose-950/40 border-rose-800/60 text-rose-300'
+                }`;
+
+                checkCard.innerHTML = `
+                    <div class="flex justify-between items-center text-[11px] font-bold">
+                        <span>P<sub>${parityPos}</sub> Check</span>
+                        <span class="${checkPassed ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${checkPassed ? '✓ OK' : '✗ Fallo'}
+                        </span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-1 font-mono">
+                        Bit S<sub>${k}</sub> = ${syndromeBitVal}
+                    </div>
+                `;
+
+                checksList.appendChild(checkCard);
+            }
+
+            const syndromeBinaryStr = syndromeBits.join('');
+
+            // UI Elements Update for Correction Result
+            const statusBadge = document.getElementById('syndrome-status-badge');
+            const iconContainer = document.getElementById('correction-icon-container');
+            const titleEl = document.getElementById('correction-title');
+            const detailEl = document.getElementById('correction-detail');
+            const extractedValEl = document.getElementById('extracted-data-val');
+
+            if (syndromeDecimal === 0) {
+                // No Error
+                statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5";
+                statusBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Transmisión Correcta (Sin errores)`;
+
+                iconContainer.className = "p-3 bg-emerald-500/20 text-emerald-400 rounded-xl";
+                iconContainer.innerHTML = `<i class="fa-solid fa-shield-check text-2xl"></i>`;
+
+                titleEl.className = "font-bold text-emerald-400 text-sm";
+                titleEl.innerText = "Sin errores detectados en la recepción";
+
+                detailEl.innerText = `Síndrome S = ${syndromeBinaryStr}₂ (Posición 0). Todos los controles de paridad satisfacen la condición.`;
+
+                // Extract Original Data
+                extractedValEl.innerText = extractDataBits(state.receivedVector);
+            } else {
+                // Error Detected
+                statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1.5 animate-pulse";
+                statusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error Detectado y Corregido`;
+
+                iconContainer.className = "p-3 bg-rose-500/20 text-rose-400 rounded-xl";
+                iconContainer.innerHTML = `<i class="fa-solid fa-wrench text-2xl"></i>`;
+
+                titleEl.className = "font-bold text-rose-400 text-sm";
+                titleEl.innerText = `Error localizado en el bit de la Posición ${syndromeDecimal} (${state.receivedVector[syndromeDecimal].bitName})`;
+
+                detailEl.innerText = `Síndrome S = ${syndromeBinaryStr}₂ = ${syndromeDecimal} (Decimal). Se invierte automáticamente el bit en la Posición ${syndromeDecimal} para recuperar los datos intactos.`;
+
+                // Correct vector in memory for extraction
+                let correctedVector = JSON.parse(JSON.stringify(state.receivedVector));
+                correctedVector[syndromeDecimal].val = correctedVector[syndromeDecimal].val === 1 ? 0 : 1;
+
+                extractedValEl.innerText = extractDataBits(correctedVector);
+            }
+        }
+
+        function extractDataBits(vector) {
+            let extracted = '';
+            for (let i = 1; i <= state.n; i++) {
+                if (!vector[i].isParity) {
+                    extracted += vector[i].val;
+                }
+            }
+            return extracted;
+        }
+    </script>
+</body>
+</html>

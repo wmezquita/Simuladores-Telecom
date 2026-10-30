@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Protocolo Parada y Espera (Stop-and-Wait ARQ)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-600 rounded-lg shadow-lg">
+                    <i class="fa-solid fa-network-wired text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">Simulador ARQ Parada y Espera</h1>
+                    <p class="text-xs text-slate-400">Diagrama Temporal de Señalización y Análises de Métricas</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-slate-300 font-mono">Stop-and-Wait ARQ</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Controls Sidebar (4 cols) -->
+        <aside class="lg:col-span-4 space-y-5">
+            
+            <!-- Parameters Card -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                    <h2 class="font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-blue-400"></i> Configuración de Parámetros
+                    </h2>
+                    <button id="resetDefaultsBtn" class="text-xs text-slate-400 hover:text-blue-400 transition-colors" title="Restablecer valores predeterminados">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>Reset
+                    </button>
+                </div>
+
+                <!-- Parameters Form -->
+                <div class="space-y-3.5 text-sm">
+                    
+                    <!-- Cantidad de Paquetes -->
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <label for="numPackets" class="font-medium">Número de Paquetes:</label>
+                            <span id="numPacketsVal" class="font-mono text-blue-400 font-bold">8</span>
+                        </div>
+                        <input type="range" id="numPackets" min="1" max="16" value="8" step="1" 
+                            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    </div>
+
+                    <!-- Tamaño del Paquete (Bytes) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="packetSize" class="block text-xs font-medium text-slate-300 mb-1">Tamaño Paquete (L)</label>
+                            <div class="relative">
+                                <input type="number" id="packetSize" value="1000" min="64" max="10000" step="64"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                <span class="absolute right-2 top-1.5 text-xs text-slate-500">Bytes</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="bandwidth" class="block text-xs font-medium text-slate-300 mb-1">Ancho Banda (R)</label>
+                            <div class="relative">
+                                <input type="number" id="bandwidth" value="1" min="0.1" max="100" step="0.1"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                <span class="absolute right-2 top-1.5 text-xs text-slate-500">Mbps</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distancia y Velocidad -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="distance" class="block text-xs font-medium text-slate-300 mb-1">Distancia (d)</label>
+                            <div class="relative">
+                                <input type="number" id="distance" value="1000" min="10" max="50000" step="50"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                <span class="absolute right-2 top-1.5 text-xs text-slate-500">km</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="propSpeed" class="block text-xs font-medium text-slate-300 mb-1">Vel. Propagación</label>
+                            <div class="relative">
+                                <input type="number" id="propSpeed" value="200000" min="100000" max="300000" step="10000"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                <span class="absolute right-2 top-1.5 text-xs text-slate-500">km/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tamaño de ACK (Bytes) -->
+                    <div>
+                        <label for="ackSize" class="block text-xs font-medium text-slate-300 mb-1">Tamaño de ACK (L<sub>ACK</sub>)</label>
+                        <div class="relative">
+                            <input type="number" id="ackSize" value="64" min="16" max="512" step="16"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <span class="absolute right-2 top-1.5 text-xs text-slate-500">Bytes</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeout Factor/Valor -->
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-300 mb-1">
+                            <label for="timeoutMult" class="font-medium">Temporizador de Timeout (T<sub>out</sub>):</label>
+                            <span id="timeoutMultVal" class="font-mono text-amber-400 font-bold">2.5 × RTT</span>
+                        </div>
+                        <input type="range" id="timeoutMult" min="1.1" max="5.0" value="2.5" step="0.1" 
+                            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    </div>
+
+                    <!-- Probabilidades de Pérdida -->
+                    <div class="border-t border-slate-700/60 pt-3 space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <label for="lossDataProb" class="font-medium">Pérdida Datos:</label>
+                                <span id="lossDataProbVal" class="font-mono text-red-400 font-bold">15%</span>
+                            </div>
+                            <input type="range" id="lossDataProb" min="0" max="80" value="15" step="5" 
+                                class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <label for="lossAckProb" class="font-medium">Pérdida ACKs:</label>
+                                <span id="lossAckProbVal" class="font-mono text-red-400 font-bold">10%</span>
+                            </div>
+                            <input type="range" id="lossAckProb" min="0" max="80" value="10" step="5" 
+                                class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Simulation Control Buttons -->
+                <div class="pt-2 border-t border-slate-700 flex flex-col gap-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="startPauseBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-xs">
+                            <i class="fa-solid fa-play" id="playIcon"></i> <span id="playBtnText">Iniciar Animación</span>
+                        </button>
+                        <button id="stepBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-xs">
+                            <i class="fa-solid fa-step-forward"></i> Paso a Paso
+                        </button>
+                    </div>
+                    <button id="resetSimBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-1.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-xs">
+                        <i class="fa-solid fa-rotate"></i> Reiniciar Simulación
+                    </button>
+                </div>
+            </div>
+
+            <!-- Calculated Delays Box -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4 shadow-xl space-y-2">
+                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-calculator text-blue-400"></i> Desglose de Tiempos Teóricos
+                </h3>
+                <div class="grid grid-cols-2 gap-2 font-mono text-xs">
+                    <div class="bg-slate-900/80 p-2 rounded border border-slate-700/50">
+                        <span class="text-slate-400 block text-[10px]">T. Serializ. Datos (T<sub>tx</sub>)</span>
+                        <span id="calcTtx" class="text-blue-400 font-bold">8.00 ms</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded border border-slate-700/50">
+                        <span class="text-slate-400 block text-[10px]">T. Propagación (T<sub>prop</sub>)</span>
+                        <span id="calcTprop" class="text-purple-400 font-bold">5.00 ms</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded border border-slate-700/50">
+                        <span class="text-slate-400 block text-[10px]">T. Serializ. ACK (T<sub>ack</sub>)</span>
+                        <span id="calcTack" class="text-emerald-400 font-bold">0.51 ms</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded border border-slate-700/50">
+                        <span class="text-slate-400 block text-[10px]">RTT Teórico (T<sub>RTT</sub>)</span>
+                        <span id="calcRtt" class="text-amber-400 font-bold">18.51 ms</span>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Visualization & Metrics Area (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col space-y-5">
+
+            <!-- Metrics Bar Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-3 shadow-md flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                        <i class="fa-regular fa-clock text-blue-400"></i> Tiempo Transcurrido
+                    </span>
+                    <span id="statTime" class="text-lg font-bold font-mono text-slate-100 mt-1">0.00 ms</span>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-3 shadow-md flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Utilización del Canal
+                    </span>
+                    <span id="statEfficiency" class="text-lg font-bold font-mono text-emerald-400 mt-1">0.0 %</span>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-3 shadow-md flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-gauge-high text-purple-400"></i> Throughput Útil
+                    </span>
+                    <span id="statThroughput" class="text-lg font-bold font-mono text-purple-300 mt-1">0.00 Kbps</span>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-3 shadow-md flex flex-col justify-between">
+                    <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-right text-red-400"></i> Retransmisiones
+                    </span>
+                    <span id="statRetrans" class="text-lg font-bold font-mono text-red-400 mt-1">0 <span class="text-xs text-slate-500 font-normal">(0 pérdidas)</span></span>
+                </div>
+            </div>
+
+            <!-- Sequence Diagram Canvas Card -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-xl flex flex-col flex-1 overflow-hidden min-h-[500px]">
+                
+                <!-- Canvas Toolbar -->
+                <div class="px-4 py-2.5 bg-slate-800/90 border-b border-slate-700 flex justify-between items-center text-xs">
+                    <div class="flex items-center space-x-4">
+                        <span class="font-semibold text-slate-200">Diagrama de Espacio-Tiempo</span>
+                        <div class="flex items-center space-x-3 text-[11px] text-slate-400">
+                            <span class="flex items-center gap-1"><span class="w-3 h-1 bg-blue-500 rounded"></span> Datos</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-1 bg-emerald-500 rounded"></span> ACK</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-1 bg-red-500 rounded"></span> Pérdida</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-slate-400 text-[11px]">Velocidad Animación:</label>
+                        <select id="animSpeed" class="bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-0.5 text-xs outline-none">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1.0x</option>
+                            <option value="2">2.0x</option>
+                            <option value="4">4.0x</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Canvas Wrapper -->
+                <div class="relative flex-1 bg-slate-950 overflow-y-auto overflow-x-hidden min-h-[450px]" id="canvasContainer">
+                    <canvas id="diagramCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <!-- Simulation Footer Progress -->
+                <div class="px-4 py-2 bg-slate-900 border-t border-slate-700 flex items-center justify-between text-xs text-slate-400">
+                    <div class="flex items-center space-x-2">
+                        <span>Progreso Paquetes:</span>
+                        <span id="progressText" class="font-mono text-slate-200 font-semibold">0 / 8 Completados</span>
+                    </div>
+                    <div id="statusBadge" class="px-2.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300 font-medium">
+                        Listo para iniciar
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Log Card -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4 shadow-xl flex flex-col max-h-[180px]">
+                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-ul text-blue-400"></i> Registro de Eventos
+                </h3>
+                <div id="eventLog" class="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] pr-2 text-slate-400">
+                    <div class="text-slate-500 italic">Haz clic en 'Iniciar Animación' para comenzar la transmisión...</div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Simulation Script Logic -->
+    <script>
+        // --- State Management & Simulation Data Structure ---
+        const state = {
+            // Configurable inputs
+            numPackets: 8,
+            packetSizeBytes: 1000,
+            bandwidthMbps: 1.0,
+            distanceKm: 1000,
+            propSpeedKms: 200000,
+            ackSizeBytes: 64,
+            timeoutMultiplier: 2.5,
+            lossDataProb: 0.15,
+            lossAckProb: 0.10,
+
+            // Calculated values (ms)
+            Ttx: 0,
+            Tprop: 0,
+            Tack: 0,
+            RTT: 0,
+            Timeout: 0,
+
+            // Simulation state
+            currentTimeMs: 0,
+            isRunning: false,
+            isFinished: false,
+            animSpeed: 1.0,
+            
+            currentPacketIndex: 0, // 0 to numPackets - 1
+            seqNo: 0,              // 0 or 1 for Stop-and-Wait
+            
+            // Events for drawing and metric history
+            packets: [], // Data packets generated
+            events: [],  // Transmission / ACK / Loss / Timeout events
+            
+            // Active animation entity
+            activeEntity: null, // current packet/ack traveling in medium or timer active
+            
+            // Stats
+            totalBytesTransmitted: 0,
+            successfulPackets: 0,
+            retransmissions: 0,
+            totalLosses: 0,
+        };
+
+        // DOM Element references
+        const elements = {
+            numPackets: document.getElementById('numPackets'),
+            numPacketsVal: document.getElementById('numPacketsVal'),
+            packetSize: document.getElementById('packetSize'),
+            bandwidth: document.getElementById('bandwidth'),
+            distance: document.getElementById('distance'),
+            propSpeed: document.getElementById('propSpeed'),
+            ackSize: document.getElementById('ackSize'),
+            timeoutMult: document.getElementById('timeoutMult'),
+            timeoutMultVal: document.getElementById('timeoutMultVal'),
+            lossDataProb: document.getElementById('lossDataProb'),
+            lossDataProbVal: document.getElementById('lossDataProbVal'),
+            lossAckProb: document.getElementById('lossAckProb'),
+            lossAckProbVal: document.getElementById('lossAckProbVal'),
+
+            // Calculated elements
+            calcTtx: document.getElementById('calcTtx'),
+            calcTprop: document.getElementById('calcTprop'),
+            calcTack: document.getElementById('calcTack'),
+            calcRtt: document.getElementById('calcRtt'),
+
+            // Statistics
+            statTime: document.getElementById('statTime'),
+            statEfficiency: document.getElementById('statEfficiency'),
+            statThroughput: document.getElementById('statThroughput'),
+            statRetrans: document.getElementById('statRetrans'),
+
+            // Control Buttons
+            startPauseBtn: document.getElementById('startPauseBtn'),
+            playIcon: document.getElementById('playIcon'),
+            playBtnText: document.getElementById('playBtnText'),
+            stepBtn: document.getElementById('stepBtn'),
+            resetSimBtn: document.getElementById('resetSimBtn'),
+            resetDefaultsBtn: document.getElementById('resetDefaultsBtn'),
+            animSpeed: document.getElementById('animSpeed'),
+
+            // Canvas
+            canvas: document.getElementById('diagramCanvas'),
+            canvasContainer: document.getElementById('canvasContainer'),
+            eventLog: document.getElementById('eventLog'),
+            progressText: document.getElementById('progressText'),
+            statusBadge: document.getElementById('statusBadge'),
+        };
+
+        // --- Calculation Engine ---
+        function updateCalculations() {
+            state.numPackets = parseInt(elements.numPackets.value);
+            state.packetSizeBytes = parseInt(elements.packetSize.value);
+            state.bandwidthMbps = parseFloat(elements.bandwidth.value);
+            state.distanceKm = parseFloat(elements.distance.value);
+            state.propSpeedKms = parseFloat(elements.propSpeed.value);
+            state.ackSizeBytes = parseInt(elements.ackSize.value);
+            state.timeoutMultiplier = parseFloat(elements.timeoutMult.value);
+            state.lossDataProb = parseInt(elements.lossDataProb.value) / 100;
+            state.lossAckProb = parseInt(elements.lossAckProb.value) / 100;
+
+            // UI updates for labels
+            elements.numPacketsVal.textContent = state.numPackets;
+            elements.timeoutMultVal.textContent = `${state.timeoutMultiplier.toFixed(1)} × RTT`;
+            elements.lossDataProbVal.textContent = `${elements.lossDataProb.value}%`;
+            elements.lossAckProbVal.textContent = `${elements.lossAckProb.value}%`;
+
+            // Ttx = L / R -> (bytes * 8 bits) / (Mbps * 10^6 bps) -> seconds -> * 1000 ms
+            state.Ttx = ((state.packetSizeBytes * 8) / (state.bandwidthMbps * 1e6)) * 1000;
+            
+            // Tprop = d / v -> km / (km/s) -> seconds -> * 1000 ms
+            state.Tprop = (state.distanceKm / state.propSpeedKms) * 1000;
+
+            // Tack = L_ack / R -> ms
+            state.Tack = ((state.ackSizeBytes * 8) / (state.bandwidthMbps * 1e6)) * 1000;
+
+            // Theoretical RTT = Ttx + Tprop + Tack + Tprop
+            state.RTT = state.Ttx + (2 * state.Tprop) + state.Tack;
+
+            // Timeout = Multiplier * RTT
+            state.Timeout = state.timeoutMultiplier * state.RTT;
+
+            // Render theoretical values
+            elements.calcTtx.textContent = `${state.Ttx.toFixed(2)} ms`;
+            elements.calcTprop.textContent = `${state.Tprop.toFixed(2)} ms`;
+            elements.calcTack.textContent = `${state.Tack.toFixed(2)} ms`;
+            elements.calcRtt.textContent = `${state.RTT.toFixed(2)} ms`;
+
+            drawDiagram();
+        }
+
+        // --- Event Log Helper ---
+        function logEvent(msg, type = 'info') {
+            const entry = document.createElement('div');
+            const timeStr = `[${state.currentTimeMs.toFixed(1)} ms]`;
+            
+            let colorClass = 'text-slate-300';
+            if (type === 'success') colorClass = 'text-emerald-400';
+            if (type === 'error') colorClass = 'text-red-400';
+            if (type === 'warn') colorClass = 'text-amber-400';
+            if (type === 'info') colorClass = 'text-blue-300';
+
+            entry.className = `flex items-start gap-2 ${colorClass}`;
+            entry.innerHTML = `<span class="text-slate-500 flex-shrink-0">${timeStr}</span> <span>${msg}</span>`;
+            
+            elements.eventLog.appendChild(entry);
+            elements.eventLog.scrollTop = elements.eventLog.scrollHeight;
+        }
+
+        // --- Reset Simulation State ---
+        function resetSimulation() {
+            state.currentTimeMs = 0;
+            state.isRunning = false;
+            state.isFinished = false;
+            state.currentPacketIndex = 0;
+            state.seqNo = 0;
+            state.events = [];
+            state.activeEntity = null;
+            state.totalBytesTransmitted = 0;
+            state.successfulPackets = 0;
+            state.retransmissions = 0;
+            state.totalLosses = 0;
+
+            elements.playIcon.className = 'fa-solid fa-play';
+            elements.playBtnText.textContent = 'Iniciar Animación';
+            elements.statusBadge.textContent = 'Listo para iniciar';
+            elements.statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300 font-medium';
+            elements.eventLog.innerHTML = '<div class="text-slate-500 italic">Haz clic en \'Iniciar Animación\' para comenzar la transmisión...</div>';
+
+            updateMetrics();
+            updateCalculations();
+        }
+
+        // --- Simulation Core Engine ---
+        function scheduleNextEvent() {
+            if (state.currentPacketIndex >= state.numPackets && !state.activeEntity) {
+                state.isFinished = true;
+                state.isRunning = false;
+                elements.playIcon.className = 'fa-solid fa-play';
+                elements.playBtnText.textContent = 'Reorganizar / Iniciar';
+                elements.statusBadge.textContent = 'Transmisión Completada';
+                elements.statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-900/80 text-emerald-300 font-medium border border-emerald-700';
+                logEvent('🎉 Transmisión exitosa de todos los paquetes.', 'success');
+                return;
+            }
+
+            if (state.activeEntity) return; // Busy in transit
+
+            // Start transmitting packet N
+            const pktNum = state.currentPacketIndex + 1;
+            const seq = state.seqNo;
+            const startTime = state.currentTimeMs;
+            
+            // Randomly determine if Data packet will be lost
+            const isDataLost = Math.random() < state.lossDataProb;
+            // Randomly determine if ACK will be lost (only relevant if Data is NOT lost)
+            const isAckLost = !isDataLost && (Math.random() < state.lossAckProb);
+
+            const eventRecord = {
+                pktNum,
+                seq,
+                startTime,
+                txEndTime: startTime + state.Ttx,
+                dataReachTime: startTime + state.Ttx + state.Tprop,
+                ackStartTime: startTime + state.Ttx + state.Tprop,
+                ackReachTime: startTime + state.Ttx + state.Tprop + state.Tack + state.Tprop,
+                timeoutTime: startTime + state.Timeout,
+                isDataLost,
+                isAckLost,
+                status: 'DATA_SENDING' // DATA_SENDING -> DATA_PROPAGATING -> ACK_PROPAGATING -> TIMEOUT / ACK_RECEIVED
+            };
+
+            state.events.push(eventRecord);
+            state.activeEntity = eventRecord;
+            state.totalBytesTransmitted += state.packetSizeBytes;
+
+            logEvent(`🚀 Emisor: Iniciando envío de Paquete Pkt ${pktNum} (Seq: ${seq})`, 'info');
+        }
+
+        function advanceSimulationTime(deltaMs) {
+            if (state.isFinished) return;
+
+            if (!state.activeEntity) {
+                scheduleNextEvent();
+                if (state.isFinished) return;
+            }
+
+            state.currentTimeMs += deltaMs;
+            const e = state.activeEntity;
+
+            if (!e) return;
+
+            // Event State Progression
+            if (e.status === 'DATA_SENDING' && state.currentTimeMs >= e.txEndTime) {
+                e.status = 'DATA_PROPAGATING';
+            }
+
+            if (e.status === 'DATA_PROPAGATING' && state.currentTimeMs >= e.dataReachTime) {
+                if (e.isDataLost) {
+                    e.status = 'WAITING_TIMEOUT';
+                    state.totalLosses++;
+                    logEvent(`❌ Canal: Paquete Pkt ${e.pktNum} PERDIDO en tránsito (Ruido/Colisión).`, 'error');
+                } else {
+                    e.status = 'ACK_PROPAGATING';
+                    logEvent(`📥 Receptor: Pkt ${e.pktNum} recibido correctamente. Transmitiendo ACK ${e.seq}`, 'success');
+                }
+            }
+
+            if (e.status === 'ACK_PROPAGATING' && state.currentTimeMs >= e.ackReachTime) {
+                if (e.isAckLost) {
+                    e.status = 'WAITING_TIMEOUT';
+                    state.totalLosses++;
+                    logEvent(`⚠️ Canal: Confirmación ACK ${e.seq} PERDIDA en dirección al emisor.`, 'error');
+                } else {
+                    // ACK received successfully
+                    e.status = 'COMPLETED';
+                    state.successfulPackets++;
+                    state.currentPacketIndex++;
+                    state.seqNo = (state.seqNo === 0) ? 1 : 0; // Flip sequence bit
+                    logEvent(`✅ Emisor: ACK ${e.seq} recibido con éxito. Avance de ventana.`, 'success');
+                    state.activeEntity = null; // Free channel for next packet
+                }
+            }
+
+            if (e.status === 'WAITING_TIMEOUT' && state.currentTimeMs >= e.timeoutTime) {
+                e.status = 'TIMEOUT_EXPIRED';
+                state.retransmissions++;
+                logEvent(`⏰ Emisor: Temporizador Agotado (Timeout = ${state.Timeout.toFixed(1)} ms) para Pkt ${e.pktNum}. Reenviando...`, 'warn');
+                state.activeEntity = null; // Re-transmit same packet
+            }
+
+            updateMetrics();
+            drawDiagram();
+        }
+
+        // --- Metrics Calculation ---
+        function updateMetrics() {
+            elements.statTime.textContent = `${state.currentTimeMs.toFixed(1)} ms`;
+            elements.progressText.textContent = `${state.successfulPackets} / ${state.numPackets} Completados`;
+            elements.statRetrans.innerHTML = `${state.retransmissions} <span class="text-xs text-slate-500 font-normal">(${state.totalLosses} pérdidas)</span>`;
+
+            if (state.currentTimeMs > 0) {
+                // Throughput (Useful bits transmitted per second)
+                const totalBitsUseful = state.successfulPackets * state.packetSizeBytes * 8;
+                const timeSec = state.currentTimeMs / 1000;
+                const throughputKbps = (totalBitsUseful / timeSec) / 1000;
+                elements.statThroughput.textContent = `${throughputKbps.toFixed(2)} Kbps`;
+
+                // Efficiency / Utilization: (Useful Data Transmission Time) / Total Time
+                const usefulDataTxTime = state.successfulPackets * state.Ttx;
+                const efficiency = Math.min(100, (usefulDataTxTime / state.currentTimeMs) * 100);
+                elements.statEfficiency.textContent = `${efficiency.toFixed(1)} %`;
+            } else {
+                elements.statThroughput.textContent = `0.00 Kbps`;
+                elements.statEfficiency.textContent = `0.0 %`;
+            }
+        }
+
+        // --- Canvas Rendering (Sequence Space-Time Diagram) ---
+        function drawDiagram() {
+            const canvas = elements.canvas;
+            const ctx = canvas.getContext('2d');
+            const container = elements.canvasContainer;
+
+            // Handle pixel density and responsive sizing
+            const width = container.clientWidth;
+            
+            // Height expands with time scale
+            const maxSimTime = Math.max(state.currentTimeMs + 50, state.RTT * (state.numPackets + state.retransmissions + 1));
+            const pixelsPerMs = 3.5;
+            const topMargin = 70;
+            const bottomMargin = 50;
+            const calculatedHeight = Math.max(container.clientHeight, topMargin + (maxSimTime * pixelsPerMs) + bottomMargin);
+
+            canvas.width = width;
+            canvas.height = calculatedHeight;
+
+            ctx.clearRect(0, 0, width, calculatedHeight);
+
+            // Column X offsets
+            const xSender = width * 0.25;
+            const xReceiver = width * 0.75;
+
+            // Draw Background Grid / Ruler
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const timeStepMs = state.RTT > 40 ? 20 : 10;
+            for (let t = 0; t <= maxSimTime; t += timeStepMs) {
+                const y = topMargin + (t * pixelsPerMs);
+                ctx.beginPath();
+                ctx.moveTo(xSender - 40, y);
+                ctx.lineTo(xReceiver + 40, y);
+                ctx.stroke();
+
+                // Time labels on the left
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px "JetBrains Mono", monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${t} ms`, xSender - 45, y + 3);
+            }
+
+            // Draw Vertical Timelines (Sender / Receiver)
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+
+            // Sender Line
+            ctx.beginPath();
+            ctx.moveTo(xSender, topMargin - 20);
+            ctx.lineTo(xSender, calculatedHeight - 20);
+            ctx.stroke();
+
+            // Receiver Line
+            ctx.beginPath();
+            ctx.moveTo(xReceiver, topMargin - 20);
+            ctx.lineTo(xReceiver, calculatedHeight - 20);
+            ctx.stroke();
+
+            // Draw Top Headers & Icons (Sender / Receiver)
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(xSender - 60, 10, 120, 36);
+            ctx.fillRect(xReceiver - 60, 10, 120, 36);
+
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(xSender - 60, 10, 120, 36);
+            ctx.strokeRect(xReceiver - 60, 10, 120, 36);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('EMISOR (A)', xSender, 26);
+            ctx.fillText('RECEPTOR (B)', xReceiver, 26);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.fillText('Host Origen', xSender, 39);
+            ctx.fillText('Host Destino', xReceiver, 39);
+
+            // Current Time Marker Line
+            const currentY = topMargin + (state.currentTimeMs * pixelsPerMs);
+            if (state.currentTimeMs > 0) {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(xSender - 50, currentY);
+                ctx.lineTo(xReceiver + 50, currentY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Label for current time line
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 10px "JetBrains Mono"';
+                ctx.textAlign = 'left';
+                ctx.fillText(`t = ${state.currentTimeMs.toFixed(1)} ms`, xReceiver + 55, currentY + 3);
+            }
+
+            // Draw Recorded Simulation Events (Arrows & Bands)
+            state.events.forEach((ev) => {
+                const yStart = topMargin + (ev.startTime * pixelsPerMs);
+                const yTxEnd = topMargin + (ev.txEndTime * pixelsPerMs);
+                const yReach = topMargin + (ev.dataReachTime * pixelsPerMs);
+                const yAckReach = topMargin + (ev.ackReachTime * pixelsPerMs);
+                const yTimeout = topMargin + (ev.timeoutTime * pixelsPerMs);
+
+                // --- DATA PACKET DRAWING ---
+                const isCurrent = (state.activeEntity === ev);
+                const progressRatio = isCurrent 
+                    ? Math.min(1, Math.max(0, (state.currentTimeMs - ev.startTime) / (ev.dataReachTime - ev.startTime)))
+                    : 1;
+
+                // Polygon / Trapezoid representing Data Transmission (Ttx band + Tprop slope)
+                ctx.fillStyle = ev.isDataLost ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.18)';
+                ctx.strokeStyle = ev.isDataLost ? '#ef4444' : '#3b82f6';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.moveTo(xSender, yStart);
+                ctx.lineTo(xSender, yTxEnd);
+
+                if (ev.isDataLost) {
+                    // Packet vanishes midway in the channel
+                    const midX = xSender + (xReceiver - xSender) * 0.55;
+                    const midYStart = yStart + (yReach - yStart) * 0.55;
+                    const midYEnd = yTxEnd + (yReach - yStart) * 0.55;
+
+                    ctx.lineTo(midX, midYEnd);
+                    ctx.lineTo(midX, midYStart);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Loss Icon / Cross
+                    if (state.currentTimeMs >= ev.startTime + (ev.dataReachTime - ev.startTime) * 0.55) {
+                        ctx.fillStyle = '#ef4444';
+                        ctx.font = 'bold 16px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('❌', midX, midYStart + 10);
+                    }
+                } else {
+                    // Reaches receiver fully
+                    ctx.lineTo(xReceiver, yReach + (yTxEnd - yStart));
+                    ctx.lineTo(xReceiver, yReach);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Main Data Vector Arrow (Top edge)
+                ctx.strokeStyle = ev.isDataLost ? '#ef4444' : '#2563eb';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(xSender, yStart);
+
+                const endArrowX = ev.isDataLost 
+                    ? xSender + (xReceiver - xSender) * 0.55
+                    : xReceiver;
+                const endArrowY = ev.isDataLost
+                    ? yStart + (yReach - yStart) * 0.55
+                    : yReach;
+
+                ctx.lineTo(endArrowX, endArrowY);
+                ctx.stroke();
+
+                // Arrowhead Data
+                if (!ev.isDataLost) {
+                    drawArrowhead(ctx, xSender, yStart, xReceiver, yReach, '#2563eb');
+                }
+
+                // Label for Data Packet
+                const midLabelX = xSender + (xReceiver - xSender) * 0.28;
+                const midLabelY = yStart + (yReach - yStart) * 0.28 - 6;
+                ctx.fillStyle = '#93c5fd';
+                ctx.font = 'bold 11px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Pkt ${ev.pktNum} [Seq ${ev.seq}]`, midLabelX, midLabelY);
+
+                // --- TIMEOUT TIMER MARKER (Sender side) ---
+                // Draw vertical timer bar at Sender
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(xSender - 6, yStart);
+                ctx.lineTo(xSender - 6, Math.min(currentY, yTimeout));
+                ctx.stroke();
+
+                // Timeout Cap
+                if (state.currentTimeMs >= ev.timeoutTime && (ev.isDataLost || ev.isAckLost)) {
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(xSender - 6, yTimeout, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#f87171';
+                    ctx.font = 'bold 10px Inter';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`⏱️ Timeout (${state.Timeout.toFixed(0)} ms)`, xSender - 14, yTimeout + 3);
+                }
+
+                // --- ACK DRAWING (Receiver -> Sender) ---
+                if (!ev.isDataLost && state.currentTimeMs >= ev.ackStartTime) {
+                    ctx.strokeStyle = ev.isAckLost ? '#ef4444' : '#10b981';
+                    ctx.lineWidth = 2;
+
+                    const ackEndX = ev.isAckLost 
+                        ? xReceiver - (xReceiver - xSender) * 0.5
+                        : xSender;
+                    const ackEndY = ev.isAckLost
+                        ? yReach + (yAckReach - yReach) * 0.5
+                        : yAckReach;
+
+                    ctx.beginPath();
+                    ctx.moveTo(xReceiver, yReach);
+                    ctx.lineTo(ackEndX, ackEndY);
+                    ctx.stroke();
+
+                    if (ev.isAckLost) {
+                        if (state.currentTimeMs >= ev.ackStartTime + (yAckReach - yReach) * 0.5) {
+                            ctx.fillStyle = '#ef4444';
+                            ctx.font = 'bold 14px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('❌', ackEndX, ackEndY + 5);
+                        }
+                    } else {
+                        drawArrowhead(ctx, xReceiver, yReach, xSender, yAckReach, '#10b981');
+                    }
+
+                    // ACK Label
+                    const ackLabelX = xReceiver - (xReceiver - xSender) * 0.3;
+                    const ackLabelY = yReach + (yAckReach - yReach) * 0.3 - 6;
+                    ctx.fillStyle = '#6ee7b7';
+                    ctx.font = 'bold 11px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`ACK ${ev.seq}`, ackLabelX, ackLabelY);
+                }
+            });
+
+            // Keep container scrolled near current active line during auto-run
+            if (state.isRunning && currentY > container.scrollTop + container.clientHeight - 80) {
+                container.scrollTop = currentY - container.clientHeight / 2;
+            }
+        }
+
+        // Helper function for rendering arrowheads
+        function drawArrowhead(ctx, fromX, fromY, toX, toY, color) {
+            const headLength = 10;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(
+                toX - headLength * Math.cos(angle - Math.PI / 6),
+                toY - headLength * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                toX - headLength * Math.cos(angle + Math.PI / 6),
+                toY - headLength * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // --- Animation Loop ---
+        let lastTimestamp = null;
+        function animationLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaSec = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            if (state.isRunning && !state.isFinished) {
+                // Advance simulated ms based on speed factor
+                const simDeltaMs = deltaSec * 15 * state.animSpeed;
+                advanceSimulationTime(simDeltaMs);
+            }
+
+            requestAnimationFrame(animationLoop);
+        }
+
+        // --- Event Listeners & UI Binding ---
+        function attachEventListeners() {
+            // Inputs triggering re-calculation
+            const inputs = [
+                elements.numPackets, elements.packetSize, elements.bandwidth,
+                elements.distance, elements.propSpeed, elements.ackSize,
+                elements.timeoutMult, elements.lossDataProb, elements.lossAckProb
+            ];
+
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    updateCalculations();
+                    if (!state.isRunning && state.events.length === 0) {
+                        resetSimulation();
+                    }
+                });
+            });
+
+            // Start / Pause
+            elements.startPauseBtn.addEventListener('click', () => {
+                if (state.isFinished) {
+                    resetSimulation();
+                }
+                state.isRunning = !state.isRunning;
+
+                if (state.isRunning) {
+                    elements.playIcon.className = 'fa-solid fa-pause';
+                    elements.playBtnText.textContent = 'Pausar';
+                    elements.statusBadge.textContent = 'Simulación en curso...';
+                    elements.statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] bg-blue-900/80 text-blue-300 font-medium border border-blue-700 animate-pulse';
+                } else {
+                    elements.playIcon.className = 'fa-solid fa-play';
+                    elements.playBtnText.textContent = 'Reanudar';
+                    elements.statusBadge.textContent = 'Pausado';
+                    elements.statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] bg-amber-900/80 text-amber-300 font-medium border border-amber-700';
+                }
+            });
+
+            // Step Forward
+            elements.stepBtn.addEventListener('click', () => {
+                if (state.isFinished) return;
+                state.isRunning = false;
+                elements.playIcon.className = 'fa-solid fa-play';
+                elements.playBtnText.textContent = 'Reanudar';
+                
+                // Step forward by 1 ms or until state change
+                advanceSimulationTime(1.5);
+            });
+
+            // Reset Simulation
+            elements.resetSimBtn.addEventListener('click', () => {
+                resetSimulation();
+            });
+
+            // Reset Defaults
+            elements.resetDefaultsBtn.addEventListener('click', () => {
+                elements.numPackets.value = 8;
+                elements.packetSize.value = 1000;
+                elements.bandwidth.value = 1;
+                elements.distance.value = 1000;
+                elements.propSpeed.value = 200000;
+                elements.ackSize.value = 64;
+                elements.timeoutMult.value = 2.5;
+                elements.lossDataProb.value = 15;
+                elements.lossAckProb.value = 10;
+                resetSimulation();
+            });
+
+            // Animation Speed
+            elements.animSpeed.addEventListener('change', (e) => {
+                state.animSpeed = parseFloat(e.target.value);
+            });
+
+            // Responsive Window Resize
+            window.addEventListener('resize', () => {
+                drawDiagram();
+            });
+        }
+
+        // --- Initialization ---
+        window.onload = function() {
+            attachEventListeners();
+            updateCalculations();
+            resetSimulation();
+            requestAnimationFrame(animationLoop);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Codificaciones de Línea - Telecomunicaciones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        canvas {
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.25);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto w-full mb-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-700 pb-4 gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-sky-400 flex items-center gap-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Simulador de Codificaciones de Línea
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Herramienta Didáctica para Ingeniería en Telecomunicaciones y Redes</p>
+            </div>
+            <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 flex items-center gap-2 self-start md:self-auto">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Procesamiento en Tiempo Real</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 mb-auto">
+
+        <!-- Controls Panel (Left Side - 4 Cols) -->
+        <section class="lg:col-span-4 bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-5 shadow-xl">
+            <h2 class="text-lg font-semibold text-slate-200 border-b border-slate-700 pb-2 flex items-center gap-2">
+                <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                </svg>
+                Configuración del Parámetro
+            </h2>
+
+            <!-- Input Sequence -->
+            <div>
+                <label for="binaryInput" class="block text-sm font-medium text-slate-300 mb-1.5">
+                    Secuencia Binaria (16 Bits):
+                </label>
+                <div class="relative">
+                    <input type="text" id="binaryInput" maxlength="16" value="1011001011010001"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-sky-300 code-font text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
+                    <button id="randomBtn" title="Generar secuencia aleatoria" 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-700 hover:bg-slate-600 text-slate-200 p-1.5 rounded-md text-xs transition-colors">
+                        🎲 Azar
+                    </button>
+                </div>
+                <div id="inputError" class="text-rose-400 text-xs mt-1.5 hidden flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Debe ingresar exactamente 16 dígitos binarios (0 o 1).</span>
+                </div>
+            </div>
+
+            <!-- Encoding Selector -->
+            <div>
+                <label for="encodingSelect" class="block text-sm font-medium text-slate-300 mb-1.5">
+                    Esquema de Codificación:
+                </label>
+                <select id="encodingSelect" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium">
+                    <optgroup label="Unipolares">
+                        <option value="unipolar-nrz">Unipolar NRZ</option>
+                        <option value="unipolar-rz">Unipolar RZ</option>
+                    </optgroup>
+                    <optgroup label="Polares">
+                        <option value="polar-nrz-l">Polar NRZ-L</option>
+                        <option value="polar-nrz-i">Polar NRZ-I</option>
+                        <option value="polar-rz">Polar RZ</option>
+                        <option value="manchester">Manchester</option>
+                        <option value="manchester-diff">Manchester Diferencial</option>
+                    </optgroup>
+                    <optgroup label="Bipolares / Multinivel">
+                        <option value="ami">Bipolar AMI</option>
+                        <option value="pseudoternary">Pseudoternaria</option>
+                        <option value="mlt3">MLT-3</option>
+                        <option value="2b1q">2B1Q (2 Binary, 1 Quaternary)</option>
+                    </optgroup>
+                    <optgroup label="Sustitución de Ceros (Scrambling)">
+                        <option value="b8zs">B8ZS (North America standard)</option>
+                        <option value="hdb3">HDB3 (European/ITU standard)</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Parameters Quick Summary -->
+            <div class="bg-slate-900/60 rounded-lg p-3.5 border border-slate-700/50 space-y-2 text-xs">
+                <div class="flex justify-between items-center text-slate-300">
+                    <span class="text-slate-400">Sincronización (Autorreloj):</span>
+                    <span id="syncBadge" class="font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Media</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-300">
+                    <span class="text-slate-400">Componente DC (0 Hz):</span>
+                    <span id="dcBadge" class="font-semibold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">Sí (Presente)</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-300">
+                    <span class="text-slate-400">Ancho de Banda Est.:</span>
+                    <span id="bwBadge" class="font-semibold text-sky-400 code-font">N / 2 (Hz)</span>
+                </div>
+            </div>
+
+            <!-- Quick Preset Shortcuts -->
+            <div>
+                <span class="block text-xs font-medium text-slate-400 mb-2">Casos de prueba educativos:</span>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button class="preset-btn bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-2 rounded text-center transition-colors" data-bits="0000000000000000">Cadenas de ceros(0)</button>
+                    <button class="preset-btn bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-2 rounded text-center transition-colors" data-bits="1111111111111111">Cadenas de unos(1)</button>
+                    <button class="preset-btn bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-2 rounded text-center transition-colors" data-bits="1010101010101010">Alternado (1/0)</button>
+                    <button class="preset-btn bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-2 rounded text-center transition-colors" data-bits="0000100000000100">Ceros continuos</button>
+                </div>
+            </div>
+
+            <!-- Conceptual Notes Panel (CORREGIDO TEXTO PLANO/HTML) -->
+            <div class="bg-slate-900/80 border border-slate-700/80 rounded-lg p-4 space-y-3.5 text-xs text-slate-300">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 border-b border-slate-700/60 pb-1.5 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Conceptos de Evaluación
+                </h3>
+                
+                <div class="space-y-1">
+                    <p class="font-semibold text-slate-200">1. Ancho de Banda / Frecuencia (<i>f</i>):</p>
+                    <p class="text-slate-400 leading-relaxed">
+                        Indica la frecuencia fundamental del espectro. Depende de la tasa de bits <i>N</i> (bps). Esquemas con transiciones rápidas a mitad de bit (como Manchester) requieren <i>N</i> Hz, mientras que esquemas como NRZ o AMI consumen <i>N</i>/2 Hz, y multinivel como MLT-3 o 2B1Q reducen la necesidad hasta <i>N</i>/4 Hz.
+                    </p>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="font-semibold text-slate-200">2. Autosincronización (Autorreloj):</p>
+                    <p class="text-slate-400 leading-relaxed">
+                        Capacidad de la señal para mantener sincronizados los relojes del transmisor y receptor sin una línea dedicada. Se califica de <b>Pobre</b> a <b>Excelente</b> según garantice cambios de nivel continuos, evitando la pérdida de reloj ante cadenas largas de ceros o unos.
+                    </p>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="font-semibold text-slate-200">3. Componente de Corriente Directa (DC):</p>
+                    <p class="text-slate-400 leading-relaxed">
+                        Nivel de voltaje promedio en el tiempo. Una componente <b>DC Alta</b> no puede atravesar transformadores ni capacitores de acoplamiento. Se busca que sea <b>Baja</b> o <b>0 DC (nula)</b> para permitir el paso por canales acoplados en CA y evitar distorsión por acumulación de carga.
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Visualization & Pedagogical Analysis (Right Side - 8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- Canvas Card -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12A2 2 0 0118 18H6a2 2 0 01-2-2V4z"/>
+                        </svg>
+                        Oscilograma Digital (Forma de Onda)
+                    </h2>
+                    <span id="encodingTitleBadge" class="text-xs code-font bg-sky-500/10 text-sky-400 border border-sky-500/30 px-2.5 py-1 rounded-full font-semibold">
+                        Unipolar NRZ
+                    </span>
+                </div>
+
+                <!-- Canvas Container -->
+                <div class="w-full relative overflow-x-auto">
+                    <canvas id="signalCanvas" width="900" height="320" class="w-full h-auto min-w-[700px]"></canvas>
+                </div>
+            </div>
+
+            <!-- Technical / Pedagogical Explanation Card -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-4">
+                <h3 class="text-md font-semibold text-slate-200 flex items-center gap-2 border-b border-slate-700 pb-2">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    Fundamentos y Reglas del Esquema
+                </h3>
+
+                <div id="ruleDescription" class="text-sm text-slate-300 leading-relaxed space-y-2">
+                    <!-- Rule descriptions populated dynamically -->
+                </div>
+
+                <!-- Sequence Level Trace Table -->
+                <div class="mt-2">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Desglose por Pulso / Voltaje Aplicado</h4>
+                    <div id="sequenceTrace" class="flex flex-wrap gap-1.5 code-font text-xs max-h-32 overflow-y-auto p-2 bg-slate-900/80 rounded-lg border border-slate-700/60">
+                        <!-- Dynamic Trace pills -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- NUEVA SECCIÓN: Ancho de Banda y Potencia Consumida -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-6 text-slate-300 text-sm leading-relaxed">
+                
+                <!-- Ancho de Banda -->
+                <div class="space-y-4">
+                    <h3 class="text-md font-semibold text-slate-200 flex items-center gap-2 border-b border-slate-700 pb-2">
+                        <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Ancho de Banda de la Señal
+                    </h3>
+
+                    <p>El cálculo del <b>ancho de banda mínimo real (<i>B</i>)</b> de una señal codificada en línea depende de tres factores principales:</p>
+
+                    <ol class="list-decimal list-inside space-y-2 pl-2">
+                        <li><b>La tasa de transmisión de datos (<i>R<sub>b</sub></i>):</b> Expresada en bits por segundo (bps).</li>
+                        <li><b>El número de bits por símbolo (<i>n</i>):</b> Si la codificación agrupa varios bits en un solo símbolo (como en los esquemas multinivel). La tasa de símbolos o baudios es <i>R<sub>s</sub></i> = <i>R<sub>b</sub></i> / <i>n</i>.</li>
+                        <li><b>El factor de forma de pulso y tipo de transición (r o L):</b> La cantidad de cambios de nivel necesarios para transmitir un bit o símbolo.</li>
+                    </ol>
+
+                    <div class="bg-slate-900/80 rounded-lg p-4 border border-slate-700/80 space-y-3 my-3">
+                        <h4 class="font-bold text-sky-400">Resumen: Cálculo del Ancho de Banda Mínimo (<i>B</i>)</h4>
+                        <p>El ancho de banda mínimo requerido por una señal de tasa <i>R<sub>b</sub></i> (bps) se determina por la fórmula base:</p>
+                        
+                        <div class="text-center py-2 text-lg code-font text-sky-300">
+                            <i>B</i> = <sup><i>R<sub>b</sub></i></sup> &frasl; <sub>(<i>n</i> &middot; <i>K</i>)</sub> &nbsp; (Hz)
+                        </div>
+
+                        <p class="text-xs text-slate-400">Donde <i>n</i> es el número de bits por símbolo y <i>K</i> es el factor del código (bits/Hz):</p>
+
+                        <ul class="space-y-3 pl-2 text-xs">
+                            <li class="space-y-1">
+                                <div class="font-semibold text-slate-200">&bull; Ancho de Banda Estándar (<i>B</i> = <i>R<sub>b</sub></i> / 2): <span class="font-normal text-slate-300">Usa pulsos completados en el tiempo de bit (<i>K</i> = 2).</span></div>
+                                <ul class="pl-4 space-y-0.5 text-slate-400">
+                                    <li>&ndash; <i>Esquemas:</i> NRZ (Unipolar/Polar), AMI, Pseudoternaria, B8ZS, HDB3.</li>
+                                    <li>&ndash; <i>Ejemplo (10 Mbps):</i> <i>B</i> = 5 MHz.</li>
+                                </ul>
+                            </li>
+                            <li class="space-y-1">
+                                <div class="font-semibold text-slate-200">&bull; Ancho de Banda Extendido (<i>B</i> = <i>R<sub>b</sub></i>): <span class="font-normal text-slate-300">Requiere el doble de espectro al forzar una transición a mitad de bit (<i>K</i> = 1).</span></div>
+                                <ul class="pl-4 space-y-0.5 text-slate-400">
+                                    <li>&ndash; <i>Esquemas:</i> Manchester, Manchester Diferencial, RZ (Unipolar/Polar).</li>
+                                    <li>&ndash; <i>Ejemplo (10 Mbps):</i> <i>B</i> = 10 MHz.</li>
+                                </ul>
+                            </li>
+                            <li class="space-y-1">
+                                <div class="font-semibold text-slate-200">&bull; Ancho de Banda Reducido / Multinivel (<i>B</i> = <i>R<sub>b</sub></i> / 4): <span class="font-normal text-slate-300">Comprime el espectro agrupando bits o extendiendo la secuencia del ciclo.</span></div>
+                                <ul class="pl-4 space-y-0.5 text-slate-400">
+                                    <li>&ndash; <i>2B1Q:</i> Agrupa 2 bits por símbolo (<i>n</i> = 2, <i>K</i> = 2).</li>
+                                    <li>&ndash; <i>MLT-3:</i> Requiere 4 unos para completar un ciclo completo.</li>
+                                    <li>&ndash; <i>Ejemplo (10 Mbps):</i> <i>B</i> = 2.5 MHz.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Potencia Consumida -->
+                <div class="space-y-4 border-t border-slate-700/80 pt-4">
+                    <h3 class="text-md font-semibold text-slate-200 flex items-center gap-2 border-b border-slate-700 pb-2">
+                        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Potencia Consumida de una Señal
+                    </h3>
+
+                    <p>Sí, en la gran mayoría de los canales de transmisión y circuitos de acoplamiento reales, <b>una señal con mayor componente de DC tiende a consumir/disipar más potencia</b>, y una señal balanceada (sin componente DC, similar a CA) suele ser más eficiente energéticamente.</p>
+
+                    <div class="space-y-2">
+                        <h4 class="font-bold text-slate-200">1. La razón matemática: Descomposición de la Potencia</h4>
+                        <p>La potencia promedio (<i>P<sub>total</sub></i>) de una señal periódica <i>v(t)</i> se calcula a través del valor eficaz o RMS (<i>V<sub>rms</sub></i>):</p>
+
+                        <div class="text-center py-2 text-md code-font text-amber-300">
+                            <i>P<sub>total</sub></i> = <sup><i>V<sub>rms</sub></i><sup>2</sup></sup> &frasl; <sub><i>R</i></sub>
+                        </div>
+
+                        <p>Matemáticamente, la potencia total de una señal de línea se descompone en dos términos independientes: la potencia de la componente continua (<i>P<sub>DC</sub></i>) y la potencia de la componente alterna (<i>P<sub>AC</sub></i>):</p>
+
+                        <div class="text-center py-2 text-md code-font text-amber-300">
+                            <i>P<sub>total</sub></i> = <i>P<sub>DC</sub></i> + <i>P<sub>AC</sub></i> = <sup><i>V<sub>DC</sub></i><sup>2</sup></sup> &frasl; <sub><i>R</i></sub> + <sup><i>V<sub>AC,rms</sub></i><sup>2</sup></sup> &frasl; <sub><i>R</i></sub>
+                        </div>
+
+                        <ul class="space-y-2 pl-2 mt-2">
+                            <li class="flex items-start gap-2">
+                                <span class="text-amber-400 font-bold">&bull;</span>
+                                <div><b>En una señal unipolar (p. ej., Unipolar NRZ de 0 V a +<i>V</i>):</b> La componente de DC es <i>V<sub>DC</sub></i> = <i>V</i> / 2. La potencia consumida en la carga es la suma del valor promedio en continua más la variación en CA.</div>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-amber-400 font-bold">&bull;</span>
+                                <div><b>En una señal polar o bipolar balanceada (p. ej., Manchester o AMI de -<i>V</i> / 2 a +<i>V</i> / 2):</b> El valor promedio en el tiempo es <i>V<sub>DC</sub></i> = 0 V. Por lo tanto, <i>P<sub>DC</sub></i> = 0, y toda la potencia transportada pertenece únicamente a la componente de alterna que lleva la información.</div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto w-full mt-8 pt-4 border-t border-slate-800 text-center text-xs text-slate-500">
+        <p>Simulador Interactivo de Codificación de Señales Digitales | Material Didáctico de Apoyo Académico</p>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // DOM Elements
+        const binaryInput = document.getElementById('binaryInput');
+        const encodingSelect = document.getElementById('encodingSelect');
+        const inputError = document.getElementById('inputError');
+        const randomBtn = document.getElementById('randomBtn');
+        const canvas = document.getElementById('signalCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Badges & Texts
+        const syncBadge = document.getElementById('syncBadge');
+        const dcBadge = document.getElementById('dcBadge');
+        const bwBadge = document.getElementById('bwBadge');
+        const encodingTitleBadge = document.getElementById('encodingTitleBadge');
+        const ruleDescription = document.getElementById('ruleDescription');
+        const sequenceTrace = document.getElementById('sequenceTrace');
+        const presetBtns = document.querySelectorAll('.preset-btn');
+
+        // Encoding Specifications Database
+        const encodingInfo = {
+            'unipolar-nrz': {
+                title: 'Unipolar NRZ (Non-Return to Zero)',
+                sync: 'Pobre', syncColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+                dc: 'Sí (Alto)', dcColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>Un '1' lógico se representa con un nivel de tensión alto (+V) a lo largo de todo el intervalo de bit. Un '0' lógico se representa con un nivel nulo (0V).</p>
+                        <p class="text-slate-400 text-xs"><b>Inconvenientes:</b> Presenta una importante componente continua (DC) y pierde el pulso de sincronismo ante secuencias largas de unos o ceros consecutivos.</p>`
+            },
+            'unipolar-rz': {
+                title: 'Unipolar RZ (Return to Zero)',
+                sync: 'Buena para unos(1)', syncColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                dc: 'Sí', dcColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+                bw: 'N (Hz) 100%',
+                rules: `<p>Un '1' se representa con tensión +V durante la primera mitad del tiempo de bit y retorna a 0V en la segunda mitad. Un '0' se mantiene en 0V durante todo el bit.</p>
+                        <p class="text-slate-400 text-xs"><b>Sincronismo:</b> La transición a mitad del pulso '1' ofrece sincronía, pero la señal requiere el doble de ancho de banda que NRZ.</p>`
+            },
+            'polar-nrz-l': {
+                title: 'Polar NRZ-L (Non-Return to Zero-Level)',
+                sync: 'Pobre', syncColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+                dc: 'Bajo', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>El nivel de voltaje depende directamente del estado del bit: Un '0' se asigna a nivel alto (+V) y un '1' se asigna a nivel bajo (-V) [o viceversa según estándar].</p>
+                        <p class="text-slate-400 text-xs"><b>Defecto principal:</b> Vulnerable a errores de polaridad si los cables se invierten y carece de sincronismo en cadenas largas de bits idénticos.</p>`
+            },
+            'polar-nrz-i': {
+                title: 'Polar NRZ-I (Non-Return to Zero-Invert)',
+                sync: 'Pobre para 0s', syncColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                dc: 'Bajo', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>Un '1' lógico produce una <b>transición/inversión</b> del nivel de tensión al comienzo del intervalo de bit. Un '0' lógico mantiene el mismo nivel que el bit anterior sin cambio.</p>
+                        <p class="text-slate-400 text-xs"><b>Uso:</b> Es una codificación diferencial; la detección se basa en la presencia de cambios de nivel y no en el valor absoluto del voltaje.</p>`
+            },
+            'polar-rz': {
+                title: 'Polar RZ (Return to Zero)',
+                sync: 'Excelente', syncColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                dc: 'Muy Bajo', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N (Hz) 100%',
+                rules: `<p>Utiliza tres niveles: +V, -V y 0V. Un '1' se transmite como (+V a la mitad, luego cae a 0V). Un '0' se transmite como (-V a la mitad, luego sube a 0V).</p>
+                        <p class="text-slate-400 text-xs"><b>Ventaja:</b> Garantiza siempre una transición intermedia en la mitad del intervalo de bit independientemente del dato, asegurando el reloj.</p>`
+            },
+            'manchester': {
+                title: 'Manchester (Bifase-L)',
+                sync: 'Excelente (Autorreloj)', syncColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                dc: 'Ninguno (0 DC)', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N (Hz) 100%',
+                rules: `<p>Existe siempre una transición exactamente en el centro de cada intervalo de bit:
+                        Un '1' se codifica como transición de nivel bajo (-V) a alto (+V). 
+                        Un '0' se codifica como transición de nivel alto (+V) a bajo (-V) (Norma IEEE 802.3 Ethernet).</p>`
+            },
+            'manchester-diff': {
+                title: 'Manchester Diferencial',
+                sync: 'Excelente (Autorreloj)', syncColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                dc: 'Ninguno (0 DC)', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N (Hz) 100%',
+                rules: `<p>La transición en el centro de cada bit se mantiene como señal de sincronismo. Un '0' ocasiona una <b>transición adicional al inicio</b> del tiempo de bit. Un '1' se caracteriza por <b>no hacer transición al inicio</b>.</p>`
+            },
+            'ami': {
+                title: 'Bipolar AMI (Alternate Mark Inversion)',
+                sync: 'Pobre para 0s', syncColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                dc: 'Ninguno (0 DC)', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>Utiliza tres niveles (+V, 0V, -V). El '0' se representa siempre con nivel cero (0V). Los '1's alternan consecutivamente su polaridad entre +V y -V.</p>
+                        <p class="text-slate-400 text-xs"><b>Propiedad:</b> Elimina la componente continua y permite detectar errores simples cuando dos '1' consecutivos poseen la misma polaridad.</p>`
+            },
+            'pseudoternary': {
+                title: 'Pseudoternaria',
+                sync: 'Pobre para unos(1)', syncColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                dc: 'Ninguno (0 DC)', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>Inversa de la Bipolar AMI: El '1' lógico se representa constantemente como 0V. Los '0's lógicos alternan sucesivamente su polaridad entre niveles +V y -V.</p>`
+            },
+            'mlt3': {
+                title: 'MLT-3 (Multi-Level Transmit 3)',
+                sync: 'Pobre para 0s', syncColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                dc: 'Bajo', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 4 (Hz) 25%',
+                rules: `<p>Avanza cíclicamente a través de los niveles [0, +V, 0, -V] únicamente cuando recibe un '1'. Si recibe un '0', la señal se mantiene en su nivel actual.</p>
+                        <p class="text-slate-400 text-xs"><b>Ventaja:</b> Reduce considerablemente la frecuencia fundamental emitida, usada frecuentemente en Ethernet Fast 100BASE-TX.</p>`
+            },
+            '2b1q': {
+                title: '2B1Q (2 Binary, 1 Quaternary)',
+                sync: 'Depende del patrón', syncColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                dc: 'Bajo', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 4 (Hz) 25%',
+                rules: `<p>Agrupa los bits de 2 en 2 (dibits) para asignarle un valor entre 4 niveles distintos de tensión:
+                        <b>00 &rarr; -3V</b>, <b>01 &rarr; -1V</b>, <b>10 &rarr; +3V</b>, <b>11 &rarr; +1V</b>.</p>
+                        <p class="text-slate-400 text-xs"><b>Ventaja:</b> Comprime 16 bits de datos en tan solo 8 intervalos de señalización, ahorrando ancho de banda (usado en ISDN/ADSL).</p>`
+            },
+            'b8zs': {
+                title: 'B8ZS (Bipolar with 8-Zero Substitution)',
+                sync: 'Excelente', syncColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                dc: 'Ninguno (0 DC)', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>Basado en AMI. Si aparecen 8 ceros consecutivos ('00000000'), se sustituyen forzosamente por la secuencia especial de violación de polaridad: <b>000VB0VB</b> (donde V=Violación, B=Bipolar válido).</p>
+                        <p class="text-slate-400 text-xs"><b>Uso:</b> Estándar de transmisión en Norteamérica (Líneas T1) para evitar la pérdida del reloj ante cadenas de ceros.</p>`
+            },
+            'hdb3': {
+                title: 'HDB3 (High Density Bipolar 3-Zero)',
+                sync: 'Excelente', syncColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                dc: 'Ninguno (0 DC)', dcColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                bw: 'N / 2 (Hz) 50%',
+                rules: `<p>Basado en AMI. Limita a un máximo de 3 la cantidad de ceros seguidos. Al detectar un 4° cero continuo ('0000'), lo sustituye según el número de '1's transmitidos desde la última sustitución:
+                        <b>000V</b> (si la cantidad de unos previos es impar) o <b>B00V</b> (si es par).</p>
+                        <p class="text-slate-400 text-xs"><b>Uso:</b> Estándar europeo / ITU-T (Líneas E1).</p>`
+            }
+        };
+
+        // Initialize and Bind Events
+        function init() {
+            binaryInput.addEventListener('input', validateAndDraw);
+            encodingSelect.addEventListener('change', validateAndDraw);
+            randomBtn.addEventListener('click', generateRandomBits);
+
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    binaryInput.value = btn.getAttribute('data-bits');
+                    validateAndDraw();
+                });
+            });
+
+            window.addEventListener('resize', validateAndDraw);
+            validateAndDraw();
+        }
+
+        function generateRandomBits() {
+            let bits = '';
+            for (let i = 0; i < 16; i++) {
+                bits += Math.floor(Math.random() * 2);
+            }
+            binaryInput.value = bits;
+            validateAndDraw();
+        }
+
+        function validateAndDraw() {
+            const val = binaryInput.value.trim();
+            const isValid = /^[01]{16}$/.test(val);
+
+            if (!isValid) {
+                inputError.classList.remove('hidden');
+                return;
+            } else {
+                inputError.classList.add('hidden');
+            }
+
+            const encoding = encodingSelect.value;
+            updateInfoPanel(encoding);
+            
+            const signalData = calculateSignal(val, encoding);
+            drawChart(val, signalData, encoding);
+        }
+
+        function updateInfoPanel(encKey) {
+            const info = encodingInfo[encKey];
+            if (!info) return;
+
+            encodingTitleBadge.textContent = info.title;
+            syncBadge.textContent = info.sync;
+            syncBadge.className = `font-semibold px-2 py-0.5 rounded border ${info.syncColor}`;
+
+            dcBadge.textContent = info.dc;
+            dcBadge.className = `font-semibold px-2 py-0.5 rounded border ${info.dcColor}`;
+
+            bwBadge.textContent = info.bw;
+            ruleDescription.innerHTML = info.rules;
+        }
+
+        // --- ENCODING ALGORITHMS GENERATOR ---
+        function calculateSignal(bitsStr, encoding) {
+            const bits = bitsStr.split('').map(Number);
+            let samples = []; // Each bit can be subdivided into 2 half-bit levels or processed
+            let trace = [];
+
+            if (encoding === '2b1q') {
+                // 2B1Q operates on dibits (pairs of bits)
+                for (let i = 0; i < bits.length; i += 2) {
+                    const dibit = `${bits[i]}${bits[i+1]}`;
+                    let level = 0;
+                    if (dibit === '00') level = -3;
+                    else if (dibit === '01') level = -1;
+                    else if (dibit === '10') level = 3;
+                    else if (dibit === '11') level = 1;
+
+                    // Each dibit spans two time slots width
+                    samples.push(level, level, level, level);
+                    trace.push({ label: `[${dibit}]`, value: `${level > 0 ? '+' : ''}${level}V` });
+                }
+                return { samples, trace, isQuaternary: true };
+            }
+
+            let lastPulse = -1; // For AMI / Pseudoternary / B8ZS / HDB3 alternating state
+            let lastLevel = 1;  // For NRZ-I / MLT-3 state tracking
+            let mltStateIndex = 0; // For MLT-3 states: [0, 1, 0, -1]
+            const mltSequence = [0, 1, 0, -1];
+
+            let onesCountSinceLastSub = 0;
+
+            for (let i = 0; i < bits.length; i++) {
+                const bit = bits[i];
+
+                switch (encoding) {
+                    case 'unipolar-nrz': {
+                        const lvl = bit === 1 ? 1 : 0;
+                        samples.push(lvl, lvl);
+                        trace.push({ label: bit, value: `${lvl}V` });
+                        break;
+                    }
+                    case 'unipolar-rz': {
+                        if (bit === 1) {
+                            samples.push(1, 0);
+                            trace.push({ label: bit, value: '+V → 0V' });
+                        } else {
+                            samples.push(0, 0);
+                            trace.push({ label: bit, value: '0V' });
+                        }
+                        break;
+                    }
+                    case 'polar-nrz-l': {
+                        const lvl = bit === 1 ? -1 : 1;
+                        samples.push(lvl, lvl);
+                        trace.push({ label: bit, value: `${lvl > 0 ? '+' : ''}${lvl}V` });
+                        break;
+                    }
+                    case 'polar-nrz-i': {
+                        if (bit === 1) lastLevel = -lastLevel;
+                        samples.push(lastLevel, lastLevel);
+                        trace.push({ label: bit, value: `${lastLevel > 0 ? '+' : ''}${lastLevel}V` });
+                        break;
+                    }
+                    case 'polar-rz': {
+                        if (bit === 1) {
+                            samples.push(1, 0);
+                            trace.push({ label: bit, value: '+V → 0V' });
+                        } else {
+                            samples.push(-1, 0);
+                            trace.push({ label: bit, value: '-V → 0V' });
+                        }
+                        break;
+                    }
+                    case 'manchester': {
+                        if (bit === 1) {
+                            samples.push(-1, 1);
+                            trace.push({ label: bit, value: '-V → +V' });
+                        } else {
+                            samples.push(1, -1);
+                            trace.push({ label: bit, value: '+V → -V' });
+                        }
+                        break;
+                    }
+                    case 'manchester-diff': {
+                        // In differential Manchester, '0' causes transition at start of bit interval
+                        if (i === 0) {
+                            lastLevel = (bit === 0) ? -1 : 1; // Arbitrary initial state
+                        } else {
+                            if (bit === 0) {
+                                lastLevel = -lastLevel; // Invert at start if 0
+                            }
+                        }
+                        const firstHalf = lastLevel;
+                        const secondHalf = -lastLevel;
+                        lastLevel = secondHalf; // End state for next bit calculation
+                        samples.push(firstHalf, secondHalf);
+                        trace.push({ label: bit, value: `${firstHalf > 0 ? '+' : ''}${firstHalf}V → ${secondHalf > 0 ? '+' : ''}${secondHalf}V` });
+                        break;
+                    }
+                    case 'ami': {
+                        if (bit === 1) {
+                            lastPulse = -lastPulse;
+                            samples.push(lastPulse, lastPulse);
+                            trace.push({ label: bit, value: `${lastPulse > 0 ? '+' : ''}${lastPulse}V` });
+                        } else {
+                            samples.push(0, 0);
+                            trace.push({ label: bit, value: '0V' });
+                        }
+                        break;
+                    }
+                    case 'pseudoternary': {
+                        if (bit === 0) {
+                            lastPulse = -lastPulse;
+                            samples.push(lastPulse, lastPulse);
+                            trace.push({ label: bit, value: `${lastPulse > 0 ? '+' : ''}${lastPulse}V` });
+                        } else {
+                            samples.push(0, 0);
+                            trace.push({ label: bit, value: '0V' });
+                        }
+                        break;
+                    }
+                    case 'mlt3': {
+                        if (bit === 1) {
+                            mltStateIndex = (mltStateIndex + 1) % 4;
+                        }
+                        const lvl = mltSequence[mltStateIndex];
+                        samples.push(lvl, lvl);
+                        trace.push({ label: bit, value: `${lvl > 0 ? '+' : ''}${lvl}V` });
+                        break;
+                    }
+                    case 'b8zs': {
+                        // Check if 8 zeros starting from position i
+                        if (bit === 0 && i <= bits.length - 8 && bits.slice(i, i + 8).every(b => b === 0)) {
+                            // Pattern 000VB0VB
+                            const V = lastPulse;      // Violation (same polarity as last)
+                            const B = -lastPulse;     // Bipolar valid (opposite)
+                            
+                            // 0 0 0 V B 0 V B
+                            const subs = [0, 0, 0, V, B, 0, -B, B]; 
+                            // Update pulses
+                            lastPulse = B;
+
+                            for (let k = 0; k < 8; k++) {
+                                const sLvl = subs[k];
+                                samples.push(sLvl, sLvl);
+                                trace.push({ 
+                                    label: `0*`, 
+                                    value: `${sLvl > 0 ? '+' : ''}${sLvl}V ${k===3||k===6?'(V)':'(B)'}` 
+                                });
+                            }
+                            i += 7; // Skip next 7 bits processed
+                        } else if (bit === 1) {
+                            lastPulse = -lastPulse;
+                            samples.push(lastPulse, lastPulse);
+                            trace.push({ label: bit, value: `${lastPulse > 0 ? '+' : ''}${lastPulse}V` });
+                        } else {
+                            samples.push(0, 0);
+                            trace.push({ label: bit, value: '0V' });
+                        }
+                        break;
+                    }
+                    case 'hdb3': {
+                        // Check if 4 zeros starting from position i
+                        if (bit === 0 && i <= bits.length - 4 && bits.slice(i, i + 4).every(b => b === 0)) {
+                            let V, B;
+                            if (onesCountSinceLastSub % 2 === 0) {
+                                // Par: Pattern B00V
+                                B = -lastPulse;
+                                V = B;
+                                lastPulse = B;
+                                samples.push(B, B, 0, 0, 0, 0, V, V);
+                                trace.push({ label: '0*', value: `${B > 0 ? '+' : ''}${B}V (B)` });
+                                trace.push({ label: '0*', value: '0V' });
+                                trace.push({ label: '0*', value: '0V' });
+                                trace.push({ label: '0*', value: `${V > 0 ? '+' : ''}${V}V (V)` });
+                            } else {
+                                // Impar: Pattern 000V
+                                V = lastPulse;
+                                samples.push(0, 0, 0, 0, 0, 0, V, V);
+                                trace.push({ label: '0*', value: '0V' });
+                                trace.push({ label: '0*', value: '0V' });
+                                trace.push({ label: '0*', value: '0V' });
+                                trace.push({ label: '0*', value: `${V > 0 ? '+' : ''}${V}V (V)` });
+                            }
+                            onesCountSinceLastSub = 0;
+                            i += 3; // Skip 3 zeros
+                        } else if (bit === 1) {
+                            lastPulse = -lastPulse;
+                            onesCountSinceLastSub++;
+                            samples.push(lastPulse, lastPulse);
+                            trace.push({ label: bit, value: `${lastPulse > 0 ? '+' : ''}${lastPulse}V` });
+                        } else {
+                            samples.push(0, 0);
+                            trace.push({ label: bit, value: '0V' });
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return { samples, trace, isQuaternary: false };
+        }
+
+        // --- CANVAS RENDERER ENGINE ---
+        function drawChart(bitsStr, signalData, encodingKey) {
+            const { samples, trace, isQuaternary } = signalData;
+
+            // Render Trace Badges in DOM
+            sequenceTrace.innerHTML = trace.map(t => `
+                <div class="flex items-center gap-1 bg-slate-800 border border-slate-700 px-2 py-1 rounded">
+                    <span class="text-sky-400 font-bold">${t.label}:</span>
+                    <span class="text-slate-200">${t.value}</span>
+                </div>
+            `).join('');
+
+            // Canvas Setup & Dimensions
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio || 900;
+            canvas.height = 320 * window.devicePixelRatio;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Margins for Axis labels
+            const margin = { top: 40, right: 30, bottom: 50, left: 60 };
+            const graphWidth = w - margin.left - margin.right;
+            const graphHeight = h - margin.top - margin.bottom;
+            const centerY = margin.top + graphHeight / 2;
+
+            // Define Voltage Scale Factor
+            const levels = isQuaternary ? [-3, -1, 1, 3] : [-1, 0, 1];
+            const maxV = isQuaternary ? 3.5 : 1.3;
+
+            function getY(val) {
+                return centerY - (val / maxV) * (graphHeight / 2);
+            }
+
+            // 1. Draw Grid Lines & Voltage Labels
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#334155'; // slate-700
+            ctx.fillStyle = '#94a3b8'; // slate-400
+            ctx.font = `${11 * window.devicePixelRatio}px Inter, sans-serif`;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            if (isQuaternary) {
+                const qLevels = [
+                    { v: 3, txt: '+3V (+11)' },
+                    { v: 1, txt: '+1V (+10)' },
+                    { v: 0, txt: ' 0V' },
+                    { v: -1, txt: '-1V (+01)' },
+                    { v: -3, txt: '-3V (+00)' }
+                ];
+                qLevels.forEach(lvl => {
+                    const y = getY(lvl.v);
+                    ctx.beginPath();
+                    ctx.setLineDash(lvl.v === 0 ? [] : [4, 4]);
+                    ctx.strokeStyle = lvl.v === 0 ? '#475569' : '#334155';
+                    ctx.moveTo(margin.left, y);
+                    ctx.lineTo(w - margin.right, y);
+                    ctx.stroke();
+
+                    ctx.fillText(lvl.txt, margin.left - 10, y);
+                });
+            } else {
+                const stdLevels = [
+                    { v: 1, txt: '+V' },
+                    { v: 0, txt: '0V' },
+                    { v: -1, txt: '-V' }
+                ];
+                stdLevels.forEach(lvl => {
+                    const y = getY(lvl.v);
+                    ctx.beginPath();
+                    ctx.setLineDash(lvl.v === 0 ? [] : [4, 4]);
+                    ctx.strokeStyle = lvl.v === 0 ? '#64748b' : '#334155';
+                    ctx.moveTo(margin.left, y);
+                    ctx.lineTo(w - margin.right, y);
+                    ctx.stroke();
+
+                    ctx.fillText(lvl.txt, margin.left - 10, y);
+                });
+            }
+
+            ctx.setLineDash([]); // Reset dash
+
+            // 2. Time Grid Lines & Bit Labels (X-Axis)
+            const numSlots = isQuaternary ? 8 : 16;
+            const slotWidth = graphWidth / numSlots;
+
+            ctx.textAlign = 'center';
+
+            for (let i = 0; i <= numSlots; i++) {
+                const x = margin.left + i * slotWidth;
+
+                // Vertical Grid Line
+                ctx.beginPath();
+                ctx.strokeStyle = '#334155';
+                ctx.moveTo(x, margin.top);
+                ctx.lineTo(x, h - margin.bottom);
+                ctx.stroke();
+
+                // Bit Header Labels on top
+                if (i < numSlots) {
+                    const midX = x + slotWidth / 2;
+                    ctx.fillStyle = '#38bdf8'; // sky-400
+                    ctx.font = `bold ${13 * window.devicePixelRatio}px JetBrains Mono, monospace`;
+
+                    if (isQuaternary) {
+                        const dibit = bitsStr.substr(i * 2, 2);
+                        ctx.fillText(dibit, midX, margin.top - 15);
+                    } else {
+                        ctx.fillText(bitsStr[i], midX, margin.top - 15);
+                    }
+
+                    // Bottom Time Markers (T, 2T...)
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = `${10 * window.devicePixelRatio}px Inter, sans-serif`;
+                    ctx.fillText(`T${i}`, x, h - margin.bottom + 15);
+                }
+            }
+
+            // 3. Draw Digital Signal Waveform
+            const totalSamples = samples.length;
+            const sampleWidth = graphWidth / totalSamples;
+
+            ctx.lineWidth = 3 * window.devicePixelRatio;
+            ctx.strokeStyle = '#38bdf8'; // Sky blue vivid color
+            ctx.shadowColor = '#0284c7';
+            ctx.shadowBlur = 8 * window.devicePixelRatio;
+
+            ctx.beginPath();
+            let currentX = margin.left;
+            let currentY = getY(samples[0]);
+
+            ctx.moveTo(currentX, currentY);
+
+            for (let i = 0; i < totalSamples; i++) {
+                const nextY = getY(samples[i]);
+                
+                // Vertical Transition Line if voltage changed
+                if (nextY !== currentY) {
+                    ctx.lineTo(currentX, nextY);
+                    currentY = nextY;
+                }
+
+                currentX += sampleWidth;
+                // Horizontal Pulse Line
+                ctx.lineTo(currentX, currentY);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Clear glow effect for clean rendering
+
+            // 4. Mid-Bit Transition Indicator Dots (Clock Sync Markers)
+            if (['manchester', 'manchester-diff', 'polar-rz', 'unipolar-rz'].includes(encodingKey)) {
+                ctx.fillStyle = '#f59e0b'; // Amber sync dot
+                for (let i = 0; i < numSlots; i++) {
+                    const midX = margin.left + (i + 0.5) * slotWidth;
+                    const sampleIdx = i * 2;
+                    const valAtMid = samples[sampleIdx];
+                    const y = getY(valAtMid);
+
+                    ctx.beginPath();
+                    ctx.arc(midX, y, 3 * window.devicePixelRatio, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Launch
+        window.onload = init;
+    </script>
+</body>
+</html>

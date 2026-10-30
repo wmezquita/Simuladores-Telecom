@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telecomunicaciones | EDUAPPS</title>
+    <style>
+        /* --- VARIABLES DE DISEÑO --- */
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #ffffff;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --accent-gold: #d97706;
+            --accent-blue: #2563eb;
+            --border-color: #cbd5e1;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-main);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- ENCABEZADO --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: #ffffff;
+        }
+
+        .brand-monogram {
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: 2px;
+            color: var(--accent-gold);
+            border: 2px solid var(--accent-gold);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .btn-back {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .btn-back:hover {
+            color: #ffffff;
+        }
+
+        /* --- TITULO DE LA MATERIA --- */
+        .hero-subpage {
+            padding: 3.5rem 1.5rem 2rem 1.5rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero-subpage h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-subpage p {
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+
+        /* --- CONTENEDOR PRINCIPAL DE SIMULADORES --- */
+        .main-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem 5rem 1.5rem;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        .simulators-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* --- TARJETA DE SIMULADOR (FILA ANCHA) --- */
+        .sim-card {
+            background-color: var(--bg-card);
+            border-radius: 10px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+            color: var(--text-dark);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .sim-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .sim-info {
+            flex-grow: 1;
+        }
+
+        .sim-number {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.25rem;
+        }
+
+        .sim-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+            color: var(--text-dark);
+        }
+
+        .sim-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .btn-access {
+            background-color: var(--bg-main);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: background-color 0.2s;
+        }
+
+        .btn-access:hover {
+            background-color: #1e293b;
+        }
+
+        /* Responsive para móviles */
+        @media (max-width: 640px) {
+            .sim-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .btn-access {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* --- PIE DE PÁGINA --- */
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        footer span {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CABECERA -->
+    <header>
+        <a href="../index.html" class="brand">
+            <span class="brand-monogram">WMM</span>
+            <span class="brand-title">EDUAPPS</span>
+        </a>
+        <a href="../index.html" class="btn-back">← Volver a Asignaturas</a>
+    </header>
+
+    <!-- TITULO DE SECCIÓN -->
+    <section class="hero-subpage">
+        <h1>Telecomunicaciones</h1>
+        <p>Interactivos de aprendizaje y simulación práctica para la asignatura.</p>
+    </section>
+
+    <!-- LISTA DE SIMULADORES -->
+    <main class="main-container">
+        <div class="simulators-list">
+
+            <!-- 1. HAMMING -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 01</div>
+                    <h2 class="sim-title">Detección y corrección de errores - Código Hamming</h2>
+                    <p class="sim-desc">Cálculo interactivo de bits de paridad, detección y corrección de errores de un bit en bloques de datos.</p>
+                </div>
+                <a href="./hamming/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 2. PARADA Y ESPERA -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 02</div>
+                    <h2 class="sim-title">Control de flujo - Parada y espera</h2>
+                    <p class="sim-desc">Simulación de transmisión punto a punto con tramas ACK y gestión de temporizadores de retransmisión (ARQ).</p>
+                </div>
+                <a href="./parada-espera/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 3. VENTANA DESLIZANTE -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 03</div>
+                    <h2 class="sim-title">Control de flujo - Ventana deslizante</h2>
+                    <p class="sim-desc">Visualizador gráfico de los protocolos Go-Back-N y Selective Repeat con pérdidas de tramas y confirmaciones.</p>
+                </div>
+                <a href="./ventana-deslizante/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 4. MODULACIÓN 8-QAM -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 04</div>
+                    <h2 class="sim-title">Modulación 8-QAM</h2>
+                    <p class="sim-desc">Mapeo de tribits en diagrama de constelación variando amplitud y fase de la portadora.</p>
+                </div>
+                <a href="./modulacion-8qam/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 5. CODIFICACIONES DE LÍNEA -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 05</div>
+                    <h2 class="sim-title">Codificaciones de Linea</h2>
+                    <p class="sim-desc">Generador de formas de onda digitales para esquemas NRZ, RZ, Manchester, AMI y pseudoternario.</p>
+                </div>
+                <a href="./codificacion-linea/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 6. SS7 -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 06</div>
+                    <h2 class="sim-title">Conmutación de Circuitos - SS7</h2>
+                    <p class="sim-desc">Flujo y secuencia de mensajes de señalización ISUP para establecimiento y liberación de llamadas telefónicas.</p>
+                </div>
+                <a href="./ss7/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 7. SIP -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 07</div>
+                    <h2 class="sim-title">Conmutación de Paquetes - SIP</h2>
+                    <p class="sim-desc">Intercambio de mensajes de señalización para el establecimiento y gestión de sesiones de Voz sobre IP.</p>
+                </div>
+                <a href="./sip/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+            <!-- 8. TDM -->
+            <div class="sim-card">
+                <div class="sim-info">
+                    <div class="sim-number">Simulador 08</div>
+                    <h2 class="sim-title">Multiplexores - División de Tiempo (TDM)</h2>
+                    <p class="sim-desc">Visualización del proceso de multiplexación síncrona y asignación de ranuras de tiempo (time slots).</p>
+                </div>
+                <a href="./tdm/index.html" class="btn-access">🔒 Acceder / NIP</a>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PIE DE PÁGINA -->
+    <footer>
+        <p><span>WMM</span> • eduapps.bid — Plataforma Educativa Personal</p>
+    </footer>
+
+</body>
+</html>

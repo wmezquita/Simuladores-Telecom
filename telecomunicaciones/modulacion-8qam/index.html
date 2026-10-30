@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Interactivo 8-QAM</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f7f9;
+      color: #1e293b;
+    }
+    .container {
+      max-width: 1150px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    h1 {
+      margin-top: 0;
+      color: #0f172a;
+      font-size: 1.6rem;
+    }
+    .control-panel {
+      background: #f1f5f9;
+      padding: 18px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid #e2e8f0;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    input[type="text"] {
+      padding: 8px 12px;
+      font-size: 1.1rem;
+      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 2px;
+      border: 2px solid #cbd5e1;
+      border-radius: 6px;
+      width: 240px;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+    .btn {
+      padding: 8px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #2563eb;
+      color: white;
+      transition: background 0.2s;
+    }
+    .btn:hover { background-color: #1d4ed8; }
+    .btn-secondary { background-color: #64748b; }
+    .btn-secondary:hover { background-color: #475569; }
+    
+    .bit-interactive-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .bit-btn {
+      width: 36px;
+      height: 36px;
+      font-family: monospace;
+      font-size: 1.05rem;
+      font-weight: bold;
+      border: 2px solid #94a3b8;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .bit-btn.val-1 {
+      background: #2563eb;
+      color: white;
+      border-color: #1d4ed8;
+    }
+    .bit-btn.val-0 {
+      background: #f8fafc;
+      color: #64748b;
+      border-color: #cbd5e1;
+    }
+    .status-msg {
+      font-size: 0.85rem;
+      color: #dc2626;
+      margin-top: 6px;
+      min-height: 1.2em;
+    }
+    #plot {
+      width: 100%;
+      height: 820px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Simulador Dinámico de Modulación 8-QAM (16 Bits)</h1>
+  
+  <div class="control-panel">
+    <div class="input-group">
+      <label for="bitInput">Secuencia de 16 bits:</label>
+      <input type="text" id="bitInput" value="1011100100011101" maxlength="16">
+      <button class="btn" onclick="setPreset('1011100100011101')">Ejemplo Original</button>
+      <button class="btn btn-secondary" onclick="setPreset('1111111111111111')">Todos 1s</button>
+      <button class="btn btn-secondary" onclick="setPreset('0000000000000000')">Todos 0s</button>
+      <button class="btn btn-secondary" onclick="setPreset('1010101010101010')">Alternado</button>
+    </div>
+
+    <div>
+      <label>Haz clic en cualquier bit para alternarlo (0 / 1):</label>
+      <div class="bit-interactive-row" id="bitButtonsContainer"></div>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <div id="plot"></div>
+</div>
+
+<script>
+  // Mapeo 8-QAM: 3 bits -> (Vpp, Fase en grados)
+  // Vpp = 2.5V (Amplitud = 1.25V) y 5.0V (Amplitud = 2.5V)
+  const QAM_MAP = {
+    "000": { vpp: 2.5, phase: 0 },
+    "001": { vpp: 2.5, phase: 90 },
+    "010": { vpp: 2.5, phase: 180 },
+    "011": { vpp: 2.5, phase: 270 },
+    "100": { vpp: 5.0, phase: 0 },
+    "101": { vpp: 5.0, phase: 90 },
+    "110": { vpp: 5.0, phase: 180 },
+    "111": { vpp: 5.0, phase: 270 }
+  };
+
+  const bitInput = document.getElementById('bitInput');
+  const statusMsg = document.getElementById('statusMsg');
+  const bitButtonsContainer = document.getElementById('bitButtonsContainer');
+
+  function renderBitButtons(bitStr) {
+    bitButtonsContainer.innerHTML = '';
+    for (let i = 0; i < bitStr.length; i++) {
+      const btn = document.createElement('button');
+      btn.className = `bit-btn val-${bitStr[i]}`;
+      btn.innerText = bitStr[i];
+      btn.title = `Bit ${i + 1}`;
+      btn.onclick = () => toggleBit(i);
+      bitButtonsContainer.appendChild(btn);
+    }
+  }
+
+  function toggleBit(index) {
+    let current = bitInput.value;
+    if (current.length < 16) return;
+    let bitArr = current.split('');
+    bitArr[index] = bitArr[index] === '1' ? '0' : '1';
+    bitInput.value = bitArr.join('');
+    updateSimulation();
+  }
+
+  function setPreset(val) {
+    bitInput.value = val;
+    updateSimulation();
+  }
+
+  function updateSimulation() {
+    let rawStr = bitInput.value.replace(/[^01]/g, '');
+    
+    if (rawStr.length < 16) {
+      statusMsg.innerText = `Ingresa 16 bits válidos (faltan ${16 - rawStr.length} bits).`;
+      return;
+    }
+    statusMsg.innerText = '';
+    
+    // Asegurar exactamente 16 bits
+    let bitStr = rawStr.slice(0, 16);
+    bitInput.value = bitStr;
+    renderBitButtons(bitStr);
+
+    let bits = bitStr.split('').map(Number);
+    
+    // 1. Tren de bits Digital (NRZ 0V / 3V)
+    let samplesPerBit = 60;
+    let tBit = [], vBit = [];
+    for (let i = 0; i < bits.length; i++) {
+      for (let s = 0; s < samplesPerBit; s++) {
+        let t = i + s / samplesPerBit;
+        tBit.push(t);
+        vBit.push(bits[i] === 1 ? 3.0 : 0.0);
+      }
+    }
+
+    // 2. Modulación 8-QAM (Padding de 2 ceros -> 18 bits = 6 símbolos)
+    let paddedBits = [...bits, 0, 0];
+    let numSymbols = 6;
+    let Ts = 3.0; // Duración de símbolo = 3 Tb
+    let fc = 1.0 / Ts; // 1 ciclo por símbolo
+    
+    let tQam = [], vQam = [];
+    let symbolsInfo = [];
+
+    for (let s = 0; s < numSymbols; s++) {
+      let chunk = `${paddedBits[s*3]}${paddedBits[s*3+1]}${paddedBits[s*3+2]}`;
+      let mapRule = QAM_MAP[chunk];
+      let vpp = mapRule.vpp;
+      let amp = vpp / 2.0;
+      let phaseDeg = mapRule.phase;
+      let phaseRad = phaseDeg * Math.PI / 180.0;
+
+      let samplesSymbol = samplesPerBit * 3;
+      for (let k = 0; k < samplesSymbol; k++) {
+        let t = s * Ts + (k / samplesSymbol) * Ts;
+        let tRel = t - s * Ts;
+        let v = amp * Math.cos(2 * Math.PI * fc * tRel + phaseRad);
+        tQam.push(t);
+        vQam.push(v);
+      }
+
+      symbolsInfo.push({
+        index: s + 1,
+        chunk: chunk,
+        vpp: vpp,
+        phase: phaseDeg,
+        I: amp * Math.cos(phaseRad),
+        Q: amp * Math.sin(phaseRad),
+        tStart: s * Ts,
+        tEnd: (s + 1) * Ts
+      });
+    }
+
+    // 3. Trazas para Plotly
+    let traceDigital = {
+      x: tBit,
+      y: vBit,
+      mode: 'lines',
+      name: 'Tren Digital (0V/3V)',
+      line: { color: '#2563eb', width: 2.5 },
+      xaxis: 'x1', yaxis: 'y1',
+      hovertemplate: 'Tiempo: %{x:.2f} Tb<br>Voltaje: %{y} V<extra></extra>'
+    };
+
+    let traceQam = {
+      x: tQam,
+      y: vQam,
+      mode: 'lines',
+      name: 'Señal 8-QAM',
+      line: { color: '#dc2626', width: 2 },
+      xaxis: 'x2', yaxis: 'y2',
+      hovertemplate: 'Tiempo: %{x:.2f} Tb<br>Voltaje: %{y:.2f} V<extra></extra>'
+    };
+
+    // Constelación: puntos estáticos de referencia
+    let refI = [], refQ = [], refText = [];
+    Object.keys(QAM_MAP).forEach(key => {
+      let r = QAM_MAP[key];
+      let a = r.vpp / 2.0;
+      let rad = r.phase * Math.PI / 180.0;
+      refI.push(a * Math.cos(rad));
+      refQ.push(a * Math.sin(rad));
+      refText.push(`Patrón: ${key}<br>Vpp: ${r.vpp}V, ${r.phase}°`);
+    });
+
+    let traceConstRef = {
+      x: refI, y: refQ,
+      mode: 'markers',
+      name: 'Estados Posibles',
+      marker: { size: 12, color: '#e2e8f0', line: { color: '#94a3b8', width: 2 } },
+      text: refText,
+      hoverinfo: 'text',
+      xaxis: 'x3', yaxis: 'y3'
+    };
+
+    // Constelación: puntos transmitidos según los datos actuales
+    let traceConstActive = {
+      x: symbolsInfo.map(s => s.I),
+      y: symbolsInfo.map(s => s.Q),
+      mode: 'markers+text',
+      name: 'Símbolos Transmitidos',
+      marker: { size: 14, color: '#16a34a', symbol: 'diamond' },
+      text: symbolsInfo.map(s => `S${s.index}:${s.chunk}`),
+      textposition: 'top center',
+      hovertext: symbolsInfo.map(s => `Símbolo ${s.index}: ${s.chunk}<br>Vpp: ${s.vpp}V, Fase: ${s.phase}°<br>I: ${s.I.toFixed(2)}V, Q: ${s.Q.toFixed(2)}V`),
+      hoverinfo: 'text',
+      xaxis: 'x3', yaxis: 'y3'
+    };
+
+    // Anotaciones para los límites de símbolos en el gráfico QAM
+    let annotations = symbolsInfo.map(s => ({
+      x: (s.tStart + s.tEnd) / 2,
+      y: 2.7,
+      xref: 'x2', yref: 'y2',
+      text: `<b>S${s.index}: ${s.chunk}</b><br>${s.vpp}V, ${s.phase}°`,
+      showarrow: false,
+      font: { size: 10, color: '#7f1d1d' },
+      bgcolor: 'rgba(254, 242, 242, 0.8)',
+      bordercolor: '#f87171',
+      borderwidth: 1,
+      borderpad: 2
+    }));
+
+    // Formas (Líneas divisorias verticales entre símbolos)
+    let shapes = symbolsInfo.map(s => ({
+      type: 'line',
+      x0: s.tStart, x1: s.tStart,
+      y0: -3.2, y1: 3.2,
+      xref: 'x2', yref: 'y2',
+      line: { color: '#cbd5e1', width: 1.5, dash: 'dash' }
+    }));
+
+    let layout = {
+      grid: { rows: 3, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+      showlegend: false,
+      margin: { l: 60, r: 40, t: 30, b: 50 },
+      annotations: annotations,
+      shapes: shapes,
+
+      // Subplot 1
+      xaxis1: { title: 'Tiempo (en unidades de bit Tb)', range: [0, 16], gridcolor: '#f1f5f9' },
+      yaxis1: { title: 'Voltaje (V)', range: [-0.5, 3.5], gridcolor: '#f1f5f9' },
+
+      // Subplot 2
+      xaxis2: { title: 'Tiempo (en unidades de bit Tb)', range: [0, 18], gridcolor: '#f1f5f9' },
+      yaxis2: { title: 'Voltaje (V)', range: [-3.3, 3.3], gridcolor: '#f1f5f9' },
+
+      // Subplot 3
+      xaxis3: { title: 'En-Fase I (V)', range: [-3, 3], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
+      yaxis3: { title: 'Cuadratura Q (V)', range: [-3, 3], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' }
+    };
+
+    Plotly.react('plot', [traceDigital, traceQam, traceConstRef, traceConstActive], layout, { responsive: true });
+  }
+
+  // Event Listeners
+  bitInput.addEventListener('input', updateSimulation);
+  
+  // Inicialización
+  updateSimulation();
+</script>
+
+</body>
+</html>

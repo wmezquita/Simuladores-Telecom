@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador VoIP (SIP / SGW / MGW - Flujos 486 Busy Here & Etiquetas RTP/UDP)</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --panel-border: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-green: #2ea043;
+            --accent-green-bright: #3fb950;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --sip-color: #58a6ff;
+            --ss7-color: #d2a8ff;
+            --rtp-color: #3fb950;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.25rem; color: #ffffff; display: flex; align-items: center; gap: 10px; }
+        .subtitle { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+        .plane-legend {
+            display: flex;
+            gap: 14px;
+            font-size: 0.78rem;
+            background: rgba(0,0,0,0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-line { width: 18px; height: 3px; border-radius: 2px; }
+        .legend-sip { background-color: var(--accent-blue); border-top: 1px dashed var(--accent-blue); }
+        .legend-ss7 { background-color: var(--accent-purple); border-top: 1px dashed var(--accent-purple); }
+        .legend-rtp { background-color: var(--accent-green-bright); }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 340px;
+            gap: 16px;
+            flex-grow: 1;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel-title {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #ffffff;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 0.78rem; color: var(--text-muted); }
+
+        select, button {
+            background-color: #21262d;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:hover, button:hover { border-color: #8b949e; }
+        button.btn-primary { background-color: var(--accent-green); color: white; border: none; font-weight: 600; }
+        button.btn-primary:hover { background-color: var(--accent-green-bright); }
+        button.btn-step { background-color: #1f6feb; color: white; border: none; font-weight: 600; }
+        button.btn-step:hover { background-color: #388bfd; }
+        button.btn-danger { background-color: #21262d; color: var(--accent-red); border: 1px solid var(--accent-red); }
+        button.btn-danger:hover { background-color: rgba(248, 81, 73, 0.1); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .phone-display {
+            background-color: #0d1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ip-badge {
+            font-family: monospace;
+            font-size: 0.7rem;
+            color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.1);
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-top: 2px;
+            display: inline-block;
+        }
+
+        .phone-status { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: var(--text-muted); }
+        .status-dot.active { background-color: var(--accent-green-bright); box-shadow: 0 0 8px var(--accent-green-bright); }
+        .status-dot.ringing { background-color: var(--accent-orange); animation: blink 0.8s infinite; }
+        .status-dot.busy { background-color: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        .diagram-container {
+            position: relative;
+            background-color: #080c10;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        svg#network-svg { width: 100%; height: 100%; min-height: 520px; }
+
+        .node-server { fill: #1f242d; stroke: var(--accent-blue); stroke-width: 2; }
+        .node-sgw { fill: #2b2238; stroke: var(--accent-purple); stroke-width: 2; }
+        .node-mgw { fill: #1c2d26; stroke: var(--accent-green); stroke-width: 2; }
+        .node-phone { fill: #21262d; stroke: var(--text-muted); stroke-width: 2; }
+
+        .link-sip { stroke: var(--accent-blue); stroke-width: 2; stroke-dasharray: 4, 4; opacity: 0.3; transition: opacity 0.3s; }
+        .link-ss7 { stroke: var(--accent-purple); stroke-width: 2; stroke-dasharray: 4, 4; opacity: 0.3; transition: opacity 0.3s; }
+
+        .link-rtp { stroke: #30363d; stroke-width: 2; opacity: 0.15; transition: all 0.4s ease; }
+        .link-rtp.active { 
+            stroke: var(--accent-green-bright); 
+            stroke-width: 5; 
+            opacity: 1; 
+            filter: drop-shadow(0 0 8px var(--accent-green-bright));
+            stroke-dasharray: 8, 4;
+            animation: rtpPulse 1s linear infinite;
+        }
+
+        @keyframes rtpPulse { to { stroke-dashoffset: -24; } }
+
+        .packet-sip { fill: var(--accent-blue); filter: drop-shadow(0 0 6px var(--accent-blue)); }
+        .packet-ss7 { fill: var(--accent-purple); filter: drop-shadow(0 0 6px var(--accent-purple)); }
+        .packet-busy { fill: var(--accent-orange); filter: drop-shadow(0 0 6px var(--accent-orange)); }
+        .packet-text { fill: #ffffff; font-size: 8px; font-weight: bold; text-anchor: middle; pointer-events: none; }
+
+        .console {
+            background-color: #0d1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.72rem;
+            padding: 8px;
+            height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .log-entry { line-height: 1.35; word-break: break-all; }
+        .log-sip { color: var(--sip-color); }
+        .log-ss7 { color: var(--ss7-color); }
+        .log-rtp { color: var(--rtp-color); }
+        .log-sys { color: #8b949e; }
+        .log-warn { color: var(--accent-orange); }
+
+        .sdp-box {
+            background-color: #0d1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 0.68rem;
+            color: #7ee787;
+            line-height: 1.3;
+        }
+
+        .info-card {
+            background-color: rgba(88, 166, 255, 0.05);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 0.76rem;
+            line-height: 1.35;
+        }
+
+        .badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 600; }
+        .badge-sip { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+        .badge-sgw { background: rgba(163, 113, 247, 0.2); color: var(--accent-purple); border: 1px solid var(--accent-purple); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Simulador VoIP (SIP / SGW / MGW - Flujo Bidireccional de Ocupado 486)</h1>
+            <div class="subtitle">Demostración Completa de Transacciones SIP / RFC 3261 y Mapeo ISUP REL / 486 Busy Here</div>
+        </div>
+        <div class="plane-legend">
+            <div class="legend-item"><div class="legend-line legend-sip"></div><span>SIP Control (UDP/TCP 5060)</span></div>
+            <div class="legend-item"><div class="legend-line legend-ss7"></div><span>SIGTRAN / SS7 (M3UA/SCTP)</span></div>
+            <div class="legend-item"><div class="legend-line legend-rtp"></div><span>Audio (UDP/RTP & E1 G.703)</span></div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        
+        <div class="panel">
+            <div class="panel-title">
+                <span>Parámetros VoIP</span>
+                <span class="badge badge-sip">SIP / RFC 3261</span>
+            </div>
+
+            <div class="control-group">
+                <label for="scenario">Escenario de Red Convergente:</label>
+                <select id="scenario" onchange="changeScenario()">
+                    <option value="1">1. Local SIP P2P (UDP/RTP - Códec Opus/G.711)</option>
+                    <option value="2" selected>2. SIP a PSTN (UDP/RTP ↔ MGW ↔ E1 G.703/G.704)</option>
+                    <option value="3">3. Larga Distancia SIP / IMS (UDP/RTP Directo G.729/G.711)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="dest-state">Estado de la Línea Destino:</label>
+                <select id="dest-state" onchange="resetCallState()">
+                    <option value="FREE">Línea Desocupada (Libre / 200 OK)</option>
+                    <option value="BUSY" selected>Línea Ocupada (486 Busy Here / REL)</option>
+                </select>
+            </div>
+
+            <div class="info-card" id="scenario-desc">
+                Llamada SIP hacia PSTN: Si la línea está ocupada, la Central PSTN retorna ISUP REL. El SGW traduce REL a 'SIP 486 Busy Here' viajando de regreso al Softphone A.
+            </div>
+
+            <div class="phone-display">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.82rem;" id="phone-a-title">Softphone SIP A</div>
+                    <div class="ip-badge" id="ip-a">192.168.10.50:5060 (UDP)</div>
+                </div>
+                <div class="phone-status">
+                    <div class="status-dot" id="dot-a"></div>
+                    <span id="state-a" style="font-size: 0.75rem;">En Gancho</span>
+                </div>
+            </div>
+
+            <div class="phone-display">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.82rem;" id="phone-b-title">Teléfono B (PSTN Mérida)</div>
+                    <div class="ip-badge" id="ip-b">E1 G.703 / DS0 64k</div>
+                </div>
+                <div class="phone-status">
+                    <div class="status-dot" id="dot-b"></div>
+                    <span id="state-b" style="font-size: 0.75rem;">En Gancho</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
+                <button class="btn-step" id="btn-next-step" onclick="executeNextStep()">⏭ Paso a Paso (Paso 1)</button>
+                <button class="btn-primary" id="btn-auto-call" onclick="startAutoCall()">▶ Iniciar Llamada Automática</button>
+                <button class="btn-danger" id="btn-hangup" onclick="hangupCall()" disabled>Colgar (BYE / Cancel)</button>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+                    <label style="font-size: 0.75rem; cursor: pointer;">
+                        <input type="checkbox" id="chk-audio" checked> Audio PSTN / Voz "¡Bueno!"
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <svg id="network-svg" viewBox="0 0 800 520">
+                <g id="rtp-links">
+                    <line id="link-rtp-p2p" class="link-rtp" x1="80" y1="410" x2="720" y2="410" />
+                    <line id="link-rtp-a-mgw" class="link-rtp" x1="80" y1="410" x2="330" y2="350" />
+                    <line id="link-rtp-mgw-b" class="link-rtp" x1="330" y1="350" x2="720" y2="410" />
+                </g>
+
+                <!-- Etiquetas de Protocolo en el Diagrama -->
+                <g id="media-labels" opacity="0">
+                    <text id="lbl-rtp-p2p" x="400" y="428" text-anchor="middle" fill="var(--accent-green-bright)" font-size="9" font-weight="bold" font-family="monospace">UDP / RTP (Códec Opus / G.711u)</text>
+                    <text id="lbl-rtp-ip" x="195" y="365" text-anchor="middle" fill="var(--accent-green-bright)" font-size="9" font-weight="bold" font-family="monospace">UDP / RTP (Códec G.711u)</text>
+                    <text id="lbl-tdm-g703" x="525" y="365" text-anchor="middle" fill="var(--accent-green-bright)" font-size="9" font-weight="bold" font-family="monospace">E1 PCM G.703/G.704 (64k)</text>
+                </g>
+
+                <g id="signaling-links">
+                    <line id="link-sip-a-proxy" class="link-sip" x1="80" y1="410" x2="200" y2="180" />
+                    <line id="link-sip-proxy-b" class="link-sip" x1="200" y1="180" x2="720" y2="410" />
+                    <line id="link-sip-proxy-sgw" class="link-sip" x1="200" y1="180" x2="470" y2="180" />
+                    <line id="link-ss7-sgw-sspb" class="link-ss7" x1="470" y1="180" x2="600" y2="350" />
+                    <line id="link-sip-proxy1-proxy2" class="link-sip" x1="200" y1="180" x2="600" y2="180" />
+                    <line id="link-sip-proxy2-b" class="link-sip" x1="600" y1="180" x2="720" y2="410" />
+                </g>
+
+                <g class="node-group" id="node-phone-a">
+                    <circle cx="80" cy="410" r="22" class="node-phone" />
+                    <text x="80" y="414" text-anchor="middle" fill="#fff" font-size="14">💻</text>
+                    <text x="80" y="445" text-anchor="middle" fill="var(--text-main)" font-size="10" font-weight="bold">SIP User Agent A</text>
+                    <text x="80" y="458" text-anchor="middle" fill="var(--accent-blue)" font-size="8" font-family="monospace">192.168.10.50</text>
+                </g>
+
+                <g class="node-group" id="node-phone-b">
+                    <circle cx="720" cy="410" r="22" class="node-phone" />
+                    <text x="720" y="414" text-anchor="middle" fill="#fff" font-size="14" id="svg-phone-b-icon">☎</text>
+                    <text x="720" y="445" text-anchor="middle" fill="var(--text-main)" font-size="10" font-weight="bold" id="svg-phone-b-name">Teléfono B</text>
+                    <text x="720" y="458" text-anchor="middle" fill="var(--accent-blue)" font-size="8" font-family="monospace" id="svg-phone-b-ip">PSTN (POTS)</text>
+                </g>
+
+                <g class="node-group" id="node-proxy-1">
+                    <rect x="150" y="150" width="100" height="60" rx="6" class="node-server" />
+                    <text x="200" y="176" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">SIP Proxy / Registrar</text>
+                    <text x="200" y="192" text-anchor="middle" fill="var(--accent-blue)" font-size="8" font-family="monospace">10.100.1.1:5060</text>
+                </g>
+
+                <g class="node-group" id="node-sgw">
+                    <rect x="420" y="150" width="100" height="60" rx="6" class="node-sgw" id="rect-sgw" />
+                    <text x="470" y="174" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">SGW (Signaling Gateway)</text>
+                    <text x="470" y="190" text-anchor="middle" fill="var(--accent-purple)" font-size="8">SIGTRAN (M3UA / SCTP)</text>
+                </g>
+
+                <g class="node-group" id="node-mgw">
+                    <rect x="280" y="320" width="100" height="60" rx="6" class="node-mgw" id="rect-mgw" />
+                    <text x="330" y="342" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">MGW (Media Gateway)</text>
+                    <text x="330" y="356" text-anchor="middle" fill="var(--accent-green-bright)" font-size="8">RTP (UDP) ↔ E1 G.703</text>
+                </g>
+
+                <g class="node-group" id="node-ssp-b">
+                    <rect x="560" y="320" width="80" height="60" rx="6" class="node-server" id="rect-ssp-b" />
+                    <text x="600" y="348" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Central PSTN B</text>
+                    <text x="600" y="364" text-anchor="middle" fill="var(--accent-purple)" font-size="8">SSP Local</text>
+                </g>
+
+                <g class="node-group" id="node-proxy-2" style="opacity: 0.15;">
+                    <rect x="550" y="150" width="100" height="60" rx="6" class="node-server" />
+                    <text x="600" y="176" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">SIP Proxy CDMX</text>
+                    <text x="600" y="192" text-anchor="middle" fill="var(--accent-blue)" font-size="8" font-family="monospace">10.200.1.1:5060</text>
+                </g>
+
+                <g id="packet-group" opacity="0">
+                    <circle id="packet-circle" r="15" class="packet-sip" />
+                    <text id="packet-label" class="packet-text" y="3">INVITE</text>
+                </g>
+
+                <rect x="200" y="475" width="400" height="30" rx="15" fill="#161b22" stroke="var(--panel-border)" />
+                <text x="400" y="494" id="circuit-status-text" text-anchor="middle" fill="var(--text-muted)" font-size="11">Estado: Reposo (SIP Agent Unregistered)</text>
+            </svg>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <span>Traza SIP / SDP (RFC 4566)</span>
+                <span class="badge badge-sgw">SGW / SIGTRAN</span>
+            </div>
+
+            <div>
+                <label>Oferta de Códecs SDP (Session Description Protocol):</label>
+                <div class="sdp-box" id="sdp-monitor">
+                    v=0<br>
+                    o=SIP_UA_A 2890844526 IN IP4 192.168.10.50<br>
+                    c=IN IP4 192.168.10.50<br>
+                    m=audio 16384 RTP/AVP 0 18 101<br>
+                    a=rtpmap:0 PCMU/8000 (G.711u / UDP)<br>
+                    a=rtpmap:18 G729/8000 (8 kbps)
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+                <label>Consola de Mensajería SIP / ISUP:</label>
+                <div class="console" id="console-log">
+                    <div class="log-entry log-sys">[SISTEMA] Pila de Protocolos SIP/SDP lista.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        class PSTNAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.currentOscs = [];
+                this.cadenceTimer = null;
+            }
+
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+            stopAll() {
+                if (this.cadenceTimer) clearInterval(this.cadenceTimer);
+                this.currentOscs.forEach(o => { try { o.stop(); } catch(e){} });
+                this.currentOscs = [];
+            }
+
+            playDialTone() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+                const o1 = this.ctx.createOscillator(), o2 = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                o1.frequency.value = 350; o2.frequency.value = 440; gain.gain.value = 0.08;
+                o1.connect(gain); o2.connect(gain); gain.connect(this.ctx.destination);
+                o1.start(); o2.start(); this.currentOscs.push(o1, o2);
+            }
+
+            playDTMFDigit(digit) {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+                const dtmfFreqs = { '1':[697,1209], '5':[770,1336], '8':[852,1336], '9':[852,1477] };
+                const freqs = dtmfFreqs[digit] || [941, 1336];
+                const o1 = this.ctx.createOscillator(), o2 = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                o1.frequency.value = freqs[0]; o2.frequency.value = freqs[1]; gain.gain.value = 0.11;
+                o1.connect(gain); o2.connect(gain); gain.connect(this.ctx.destination);
+                o1.start(); o2.start(); setTimeout(() => { o1.stop(); o2.stop(); }, 120);
+            }
+
+            playRingbackTone() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+                const playBurst = () => {
+                    const o1 = this.ctx.createOscillator(), o2 = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                    o1.frequency.value = 440; o2.frequency.value = 480; gain.gain.value = 0.08;
+                    o1.connect(gain); o2.connect(gain); gain.connect(this.ctx.destination);
+                    o1.start(); o2.start(); setTimeout(() => { o1.stop(); o2.stop(); }, 2000);
+                };
+                playBurst(); this.cadenceTimer = setInterval(playBurst, 6000);
+            }
+
+            playBusyTone() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.init(); this.stopAll();
+                const playBurst = () => {
+                    const o1 = this.ctx.createOscillator(), o2 = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                    o1.frequency.value = 480; o2.frequency.value = 620; gain.gain.value = 0.09;
+                    o1.connect(gain); o2.connect(gain); gain.connect(this.ctx.destination);
+                    o1.start(); o2.start(); setTimeout(() => { o1.stop(); o2.stop(); }, 500);
+                };
+                playBurst(); this.cadenceTimer = setInterval(playBurst, 1000);
+            }
+
+            speakFemaleGreeting() {
+                if (!document.getElementById('chk-audio').checked) return;
+                this.stopAll();
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance("¡Bueno!");
+                    utterance.lang = 'es-MX'; utterance.pitch = 1.3; utterance.rate = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+        }
+
+        const audio = new PSTNAudioEngine();
+
+        let currentScenario = "2";
+        let stepIndex = 0;
+        let isAutoRunning = false;
+        let animationTimer = null;
+
+        const scenarioSelect = document.getElementById('scenario');
+        const destStateSelect = document.getElementById('dest-state');
+        const scenarioDesc = document.getElementById('scenario-desc');
+        const btnNextStep = document.getElementById('btn-next-step');
+        const btnAutoCall = document.getElementById('btn-auto-call');
+        const btnHangup = document.getElementById('btn-hangup');
+        const consoleLog = document.getElementById('console-log');
+        const sdpMonitor = document.getElementById('sdp-monitor');
+        const circuitStatusText = document.getElementById('circuit-status-text');
+
+        const packetGroup = document.getElementById('packet-group');
+        const packetCircle = document.getElementById('packet-circle');
+        const packetLabel = document.getElementById('packet-label');
+
+        function log(msg, type = 'sys') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            entry.innerText = `[${time}] ${msg}`;
+            consoleLog.appendChild(entry);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function changeScenario() {
+            resetCallState();
+            currentScenario = scenarioSelect.value;
+
+            const nodeSGW = document.getElementById('node-sgw');
+            const nodeMGW = document.getElementById('node-mgw');
+            const nodeSSPB = document.getElementById('node-ssp-b');
+            const nodeProxy2 = document.getElementById('node-proxy-2');
+
+            const linkSGWSS7 = document.getElementById('link-ss7-sgw-sspb');
+            const linkProxy2 = document.getElementById('link-sip-proxy1-proxy2');
+            const linkProxy2B = document.getElementById('link-sip-proxy2-b');
+            const linkProxyB = document.getElementById('link-sip-proxy-b');
+
+            if (currentScenario === "1") {
+                scenarioDesc.innerText = "Escenario 1 (SIP P2P Local): Llamada IP pura en LAN. Si B está ocupado, responde '486 Busy Here' de regreso al Proxy y a A.";
+                document.getElementById('phone-b-title').innerText = "Softphone B (SIP)";
+                document.getElementById('ip-b').innerText = "192.168.10.80:5060 (UDP)";
+                document.getElementById('svg-phone-b-name').textContent = "Softphone B";
+                document.getElementById('svg-phone-b-ip').textContent = "192.168.10.80";
+                document.getElementById('svg-phone-b-icon').textContent = "💻";
+
+                nodeSGW.style.opacity = "0.15"; nodeMGW.style.opacity = "0.15"; nodeSSPB.style.opacity = "0.15"; nodeProxy2.style.opacity = "0.15";
+                linkSGWSS7.style.opacity = "0.15"; linkProxy2.style.opacity = "0.15"; linkProxy2B.style.opacity = "0.15"; linkProxyB.style.opacity = "1";
+
+            } else if (currentScenario === "2") {
+                scenarioDesc.innerText = "Escenario 2 (SIP a PSTN): Si la línea PSTN está ocupada, la Central B emite ISUP REL. El SGW traduce REL a 'SIP 486 Busy Here' hacia Softphone A.";
+                document.getElementById('phone-b-title').innerText = "Teléfono B (PSTN Mérida)";
+                document.getElementById('ip-b').innerText = "E1 G.703 / DS0 64k";
+                document.getElementById('svg-phone-b-name').textContent = "Teléfono B (PSTN)";
+                document.getElementById('svg-phone-b-ip').textContent = "Canal PCM (DS0)";
+                document.getElementById('svg-phone-b-icon').textContent = "☎";
+
+                nodeSGW.style.opacity = "1"; nodeMGW.style.opacity = "1"; nodeSSPB.style.opacity = "1"; nodeProxy2.style.opacity = "0.15";
+                linkSGWSS7.style.opacity = "1"; linkProxy2.style.opacity = "0.15"; linkProxy2B.style.opacity = "0.15"; linkProxyB.style.opacity = "0.15";
+
+            } else {
+                scenarioDesc.innerText = "Escenario 3 (Larga Distancia SIP / IMS): Mérida a CDMX. Si el destino está ocupado, el 486 viaja de regreso por la red de servidores SIP Proxy.";
+                document.getElementById('phone-b-title').innerText = "Softphone B (SIP CDMX)";
+                document.getElementById('ip-b').innerText = "10.200.15.105:5060 (UDP)";
+                document.getElementById('svg-phone-b-name').textContent = "Softphone CDMX";
+                document.getElementById('svg-phone-b-ip').textContent = "10.200.15.105";
+                document.getElementById('svg-phone-b-icon').textContent = "💻";
+
+                nodeSGW.style.opacity = "0.15"; nodeMGW.style.opacity = "0.15"; nodeSSPB.style.opacity = "0.15"; nodeProxy2.style.opacity = "1";
+                linkSGWSS7.style.opacity = "0.15"; linkProxy2.style.opacity = "1"; linkProxy2B.style.opacity = "1"; linkProxyB.style.opacity = "0.15";
+            }
+            log(`Escenario configurado: Opción ${currentScenario}`, 'sys');
+        }
+
+        function animatePacket(label, pathPoints, packetType, duration, onComplete) {
+            if (animationTimer) cancelAnimationFrame(animationTimer);
+            
+            packetLabel.textContent = label;
+            
+            if (packetType === 'SS7') packetCircle.setAttribute('class', 'packet-ss7');
+            else if (packetType === 'BUSY') packetCircle.setAttribute('class', 'packet-busy');
+            else packetCircle.setAttribute('class', 'packet-sip');
+
+            packetGroup.setAttribute('opacity', '1');
+
+            let start = null;
+
+            function step(timestamp) {
+                if (!start) start = timestamp;
+                let progress = (timestamp - start) / duration;
+                if (progress > 1) progress = 1;
+
+                const totalSegs = pathPoints.length - 1;
+                const segProgress = progress * totalSegs;
+                const currentSeg = Math.min(Math.floor(segProgress), totalSegs - 1);
+                const subProgress = segProgress - currentSeg;
+
+                const p1 = pathPoints[currentSeg];
+                const p2 = pathPoints[currentSeg + 1];
+
+                const x = p1.x + (p2.x - p1.x) * subProgress;
+                const y = p1.y + (p2.y - p1.y) * subProgress;
+
+                packetGroup.setAttribute('transform', `translate(${x}, ${y})`);
+
+                if (progress < 1) {
+                    animationTimer = requestAnimationFrame(step);
+                } else {
+                    packetGroup.setAttribute('opacity', '0');
+                    if (onComplete) onComplete();
+                }
+            }
+            animationTimer = requestAnimationFrame(step);
+        }
+
+        function getSignalingPoints(direction = 'FORWARD') {
+            const P_A = { x: 80, y: 410 };
+            const P_PRX1 = { x: 200, y: 180 };
+            const P_SGW = { x: 470, y: 180 };
+            const P_SSPB = { x: 600, y: 350 };
+            const P_PRX2 = { x: 600, y: 180 };
+            const P_B = { x: 720, y: 410 };
+
+            let path = [];
+            if (currentScenario === "1") {
+                path = [P_A, P_PRX1, P_B];
+            } else if (currentScenario === "2") {
+                path = [P_A, P_PRX1, P_SGW, P_SSPB, P_B];
+            } else {
+                path = [P_A, P_PRX1, P_PRX2, P_B];
+            }
+
+            return direction === 'FORWARD' ? path : path.reverse();
+        }
+
+        function executeNextStep() {
+            stepIndex++;
+
+            if (stepIndex === 1) {
+                btnHangup.disabled = false;
+                document.getElementById('dot-a').className = 'status-dot active';
+                document.getElementById('state-a').innerText = 'Descolgado / Reg OK';
+                circuitStatusText.innerText = "Paso 1: Softphone A listo (SIP REGISTER sobre UDP 5060)";
+                circuitStatusText.setAttribute('fill', 'var(--accent-blue)');
+                
+                log('Softphone A iniciado. Puerto UDP 5060 activo.', 'sip');
+                audio.playDialTone();
+                btnNextStep.innerText = "⏭ Paso 2: Generar SIP INVITE";
+
+            } else if (stepIndex === 2) {
+                circuitStatusText.innerText = "Paso 2: Enviando SIP INVITE + SDP hacia la red";
+                log('SIP INVITE sip:5555348899@10.100.1.1 (UDP/5060) con SDP Offer', 'sip');
+                
+                sdpMonitor.innerHTML = `
+                    <b>v=0</b><br>
+                    o=SIP_UA_A 2890844526 IN IP4 192.168.10.50<br>
+                    c=IN IP4 192.168.10.50<br>
+                    m=audio 16384 RTP/AVP 0 18 101<br>
+                    a=rtpmap:0 PCMU/8000 (G.711u / UDP)
+                `;
+
+                audio.playDTMFDigit('5');
+                
+                const fwdPath = getSignalingPoints('FORWARD');
+                animatePacket('INVITE', fwdPath, currentScenario === "2" ? 'SS7' : 'SIP', 2200, () => {
+                    log('[SIP Proxy] Responde 100 Trying a Softphone A.', 'sip');
+                    
+                    const rev100Path = [fwdPath[1], fwdPath[0]];
+                    animatePacket('100 Trying', rev100Path, 'SIP', 1000, () => {
+                        
+                        if (destStateSelect.value === 'BUSY') {
+                            document.getElementById('dot-b').className = 'status-dot busy';
+                            document.getElementById('state-b').innerText = 'Línea Ocupada';
+
+                            if (currentScenario === "2") {
+                                log('[PSTN B] Central emite ISUP REL (Release - Cause 17: User Busy)', 'warn');
+                                log('[SGW] Mapeando ISUP REL -> SIP 486 Busy Here...', 'ss7');
+                            } else {
+                                log('[SIP B] Usuario responde con mensaje 486 Busy Here', 'warn');
+                            }
+
+                            btnNextStep.innerText = "⏭ Respuesta: 486 Busy Here de Regreso";
+                            if (isAutoRunning) setTimeout(executeNextStep, 600);
+                        } else {
+                            btnNextStep.innerText = "⏭ Paso 3: Recibir 180 Ringing de Regreso";
+                            if (isAutoRunning) setTimeout(executeNextStep, 600);
+                        }
+                    });
+                });
+
+            } else if (stepIndex === 3) {
+                audio.stopAll();
+
+                if (destStateSelect.value === 'BUSY') {
+                    circuitStatusText.innerText = "Paso 3: Viaje de Regreso de SIP 486 Busy Here por la Red";
+                    circuitStatusText.setAttribute('fill', 'var(--accent-orange)');
+
+                    const revPath = getSignalingPoints('BACKWARD');
+                    const labelText = currentScenario === "2" ? "REL / 486" : "486 Busy";
+
+                    log(`[RED] Transmitiendo paquete de error '${labelText}' de regreso hacia Softphone A...`, 'warn');
+
+                    animatePacket(labelText, revPath, 'BUSY', 2200, () => {
+                        log('[SIP UA A] 486 Busy Here recibido. Inyectando Tono de Ocupado local.', 'warn');
+                        audio.playBusyTone();
+                        
+                        circuitStatusText.innerText = "Línea Destino Ocupada (SIP 486 Busy Here Recibido)";
+                        
+                        log('[SIP UA A] Enviando ACK de confirmación para cerrar la transacción 486.', 'sip');
+                        const ackPath = [revPath[revPath.length - 1], revPath[revPath.length - 2]];
+                        
+                        animatePacket('ACK', ackPath, 'SIP', 800, () => {
+                            btnNextStep.innerText = "Línea Ocupada (Transacción Terminada)";
+                            btnNextStep.disabled = true;
+                        });
+                    });
+
+                } else {
+                    circuitStatusText.innerText = "Paso 3: Recibiendo SIP 180 Ringing / ACM";
+                    circuitStatusText.setAttribute('fill', 'var(--accent-orange)');
+
+                    const revPath = getSignalingPoints('BACKWARD');
+                    if (currentScenario === "2") log('[SGW] Mapeando respuesta SS7 ACM -> SIP 180 Ringing', 'ss7');
+                    log('[SIP] Mensaje 180 Ringing (UDP) viajando de regreso hacia Softphone A...', 'sip');
+
+                    animatePacket(currentScenario === "2" ? 'ACM / 180' : '180 Ringing', revPath, 'SIP', 2000, () => {
+                        log('[SIP] 180 Ringing recibido. Generando Tono de Llamada (Ringback)', 'sip');
+                        audio.playRingbackTone();
+                        document.getElementById('dot-b').className = 'status-dot ringing';
+                        document.getElementById('state-b').innerText = 'Timbrando...';
+                        
+                        btnNextStep.innerText = "⏭ Paso 4: Contestar (200 OK) y Abrir Audio";
+                        if (isAutoRunning) setTimeout(executeNextStep, 2500);
+                    });
+                }
+
+            } else if (stepIndex === 4) {
+                audio.stopAll();
+                circuitStatusText.innerText = "Paso 4: 200 OK + Negociación SDP + Activación de Audio";
+                log('[SIP] Destino descuelga: Respuesta 200 OK recibida con SDP Answer.', 'sip');
+
+                const revPath = getSignalingPoints('BACKWARD');
+                animatePacket('200 OK', revPath, 'SIP', 1800, () => {
+                    log('[SIP] 200 OK confirmado. Negociación de códecs completada.', 'sip');
+                    document.getElementById('dot-b').className = 'status-dot active';
+                    document.getElementById('state-b').innerText = 'En Llamada';
+                    
+                    audio.speakFemaleGreeting();
+
+                    sdpMonitor.innerHTML += `<br><span style="color:#58a6ff;"><b>[SDP Answer - 200 OK]</b><br>c=IN IP4 ${currentScenario === "2" ? "10.100.5.20 (MGW)" : "192.168.10.80"}<br>m=audio 20000 RTP/AVP 0 (Códec Seleccionado: G.711u)</span>`;
+
+                    const fwdPath = getSignalingPoints('FORWARD');
+                    animatePacket('ACK', fwdPath, 'SIP', 1200, () => {
+                        log('[VOZ/MEDIA] Handshake SIP/SDP finalizado. ABRIENDO RUTA DE AUDIO.', 'rtp');
+                        connectRTPMedia();
+                        btnNextStep.innerText = "Voz Activa (En Curso)";
+                        btnNextStep.disabled = true;
+                    });
+                });
+            }
+        }
+
+        function connectRTPMedia() {
+            const linkP2P = document.getElementById('link-rtp-p2p');
+            const linkAMGW = document.getElementById('link-rtp-a-mgw');
+            const linkMGWB = document.getElementById('link-rtp-mgw-b');
+            
+            const mediaLabels = document.getElementById('media-labels');
+            const lblP2P = document.getElementById('lbl-rtp-p2p');
+            const lblIP = document.getElementById('lbl-rtp-ip');
+            const lblTDM = document.getElementById('lbl-tdm-g703');
+
+            mediaLabels.setAttribute('opacity', '1');
+
+            if (currentScenario === "1") {
+                linkP2P.classList.add('active');
+                lblP2P.style.display = 'block';
+                lblP2P.textContent = "UDP / RTP (Códec Opus / G.711u)";
+                lblIP.style.display = 'none';
+                lblTDM.style.display = 'none';
+                log('[RTP P2P] Flujo directo de audio UDP/RTP activo (Opus/G.711u) en LAN.', 'rtp');
+                circuitStatusText.innerText = "Audio P2P Activo: UDP/RTP Directo (Códec Opus / G.711u)";
+
+            } else if (currentScenario === "2") {
+                linkAMGW.classList.add('active');
+                linkMGWB.classList.add('active');
+                lblP2P.style.display = 'none';
+                lblIP.style.display = 'block';
+                lblTDM.style.display = 'block';
+                log('[RTP / UDP] Flujo IP: UDP/RTP con Códec G.711u (64 kbps, 20ms) entre Softphone A y MGW.', 'rtp');
+                log('[TDM / E1] Flujo PSTN: Muestras PCM G.711 montadas en Enlace E1 G.703/G.704 (64 kbps por DS0).', 'rtp');
+                circuitStatusText.innerText = "Audio Activo: UDP/RTP G.711u (IP) ↔ MGW ↔ TDM E1 G.703/G.704 (PSTN)";
+
+            } else {
+                linkP2P.classList.add('active');
+                lblP2P.style.display = 'block';
+                lblP2P.textContent = "UDP / RTP Directo (Códec G.729 / G.711u)";
+                lblIP.style.display = 'none';
+                lblTDM.style.display = 'none';
+                log('[RTP P2P] Flujo directo de audio UDP/RTP activo (Códec G.729 / G.711u) entre Mérida y CDMX.', 'rtp');
+                circuitStatusText.innerText = "Audio P2P Activo: UDP/RTP Directo (Códec G.729 / G.711u)";
+            }
+
+            circuitStatusText.setAttribute('fill', 'var(--accent-green-bright)');
+        }
+
+        function startAutoCall() {
+            if (stepIndex !== 0) resetCallState();
+            isAutoRunning = true;
+            btnAutoCall.disabled = true;
+            executeNextStep();
+        }
+
+        function hangupCall() {
+            audio.stopAll();
+            isAutoRunning = false;
+            
+            log('[SIP] Finalizando llamada. Enviando SIP BYE (UDP 5060)...', 'sip');
+            circuitStatusText.innerText = "Enviando SIP BYE...";
+
+            document.querySelectorAll('.link-rtp').forEach(el => el.classList.remove('active'));
+            document.getElementById('media-labels').setAttribute('opacity', '0');
+
+            const fwdPath = getSignalingPoints('FORWARD');
+            animatePacket('BYE', fwdPath, 'SIP', 1400, () => {
+                log('[SIP] BYE entregado. Recibiendo 200 OK de confirmación...', 'sip');
+                
+                const revPath = getSignalingPoints('BACKWARD');
+                animatePacket('200 OK', revPath, 'SIP', 1200, () => {
+                    log('[SIP] Respuesta 200 OK recibida para BYE. Sesión y sockets UDP liberados.', 'sip');
+                    resetCallState();
+                });
+            });
+        }
+
+        function resetCallState() {
+            audio.stopAll();
+            if (animationTimer) cancelAnimationFrame(animationTimer);
+            
+            stepIndex = 0;
+            isAutoRunning = false;
+
+            document.getElementById('dot-a').className = 'status-dot';
+            document.getElementById('state-a').innerText = 'En Gancho';
+            document.getElementById('dot-b').className = 'status-dot';
+            document.getElementById('state-b').innerText = 'En Gancho';
+
+            document.querySelectorAll('.link-rtp').forEach(el => el.classList.remove('active'));
+            document.getElementById('media-labels').setAttribute('opacity', '0');
+            packetGroup.setAttribute('opacity', '0');
+
+            btnNextStep.innerText = "⏭ Paso a Paso (Paso 1)";
+            btnNextStep.disabled = false;
+            btnAutoCall.disabled = false;
+            btnHangup.disabled = true;
+
+            circuitStatusText.innerText = "Estado: Reposo (SIP Agent Unregistered)";
+            circuitStatusText.setAttribute('fill', 'var(--text-muted)');
+        }
+
+        changeScenario();
+    </script>
+</body>
+</html>
