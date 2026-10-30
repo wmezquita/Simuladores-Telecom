@@ -1,2 +1,2 @@
 # Simuladores
-Simuladores para telecomunicaciones
+Simuladores para asignaturas
