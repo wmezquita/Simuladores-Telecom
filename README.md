@@ -1,2 +1,2 @@
-# Simuladores-Telecom
+# Simuladores
 Simuladores para telecomunicaciones
