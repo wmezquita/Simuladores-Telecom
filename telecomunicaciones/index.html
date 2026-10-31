@@ -175,10 +175,106 @@
             gap: 0.5rem;
             border: 1px solid rgba(255, 255, 255, 0.15);
             transition: background-color 0.2s;
+            cursor: pointer;
         }
 
         .btn-access:hover {
             background-color: #1e293b;
+        }
+
+        /* --- MODAL DE AUTENTICACIÓN --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 420px;
+            text-align: center;
+            color: var(--text-dark);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .modal-card h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+
+        .modal-sim-name {
+            font-size: 0.95rem;
+            color: var(--accent-gold);
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--accent-blue);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:hover {
+            background-color: #1d4ed8;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 0.75rem;
+            display: none;
         }
 
         /* Responsive para móviles */
@@ -236,7 +332,7 @@
                     <h2 class="sim-title">Detección y corrección de errores - Código Hamming</h2>
                     <p class="sim-desc">Cálculo interactivo de bits de paridad, detección y corrección de errores de un bit en bloques de datos.</p>
                 </div>
-                <a href="./hamming/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 01: Hamming', './hamming/index.html', 'hamming')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 2. PARADA Y ESPERA -->
@@ -246,7 +342,7 @@
                     <h2 class="sim-title">Control de flujo - Parada y espera</h2>
                     <p class="sim-desc">Simulación de transmisión punto a punto con tramas ACK y gestión de temporizadores de retransmisión (ARQ).</p>
                 </div>
-                <a href="./parada-espera/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 02: Parada y Espera', './parada-espera/index.html', 'parada_espera')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 3. VENTANA DESLIZANTE -->
@@ -256,7 +352,7 @@
                     <h2 class="sim-title">Control de flujo - Ventana deslizante</h2>
                     <p class="sim-desc">Visualizador gráfico de los protocolos Go-Back-N y Selective Repeat con pérdidas de tramas y confirmaciones.</p>
                 </div>
-                <a href="./ventana-deslizante/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 03: Ventana Deslizante', './ventana-deslizante/index.html', 'ventana_deslizante')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 4. MODULACIÓN 8-QAM -->
@@ -266,7 +362,7 @@
                     <h2 class="sim-title">Modulación 8-QAM</h2>
                     <p class="sim-desc">Mapeo de tribits en diagrama de constelación variando amplitud y fase de la portadora.</p>
                 </div>
-                <a href="./modulacion-8qam/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 04: Modulación 8-QAM', './modulacion-8qam/index.html', 'modulacion_8qam')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 5. CODIFICACIONES DE LÍNEA -->
@@ -276,7 +372,7 @@
                     <h2 class="sim-title">Codificaciones de Linea</h2>
                     <p class="sim-desc">Generador de formas de onda digitales para esquemas NRZ, RZ, Manchester, AMI y pseudoternario.</p>
                 </div>
-                <a href="./codificacion-linea/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 05: Codif. de Línea', './codificacion-linea/index.html', 'codificacion_linea')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 6. SS7 -->
@@ -286,7 +382,7 @@
                     <h2 class="sim-title">Conmutación de Circuitos - SS7</h2>
                     <p class="sim-desc">Flujo y secuencia de mensajes de señalización ISUP para establecimiento y liberación de llamadas telefónicas.</p>
                 </div>
-                <a href="./ss7/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 06: SS7', './ss7/index.html', 'ss7')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 7. SIP -->
@@ -296,7 +392,7 @@
                     <h2 class="sim-title">Conmutación de Paquetes - SIP</h2>
                     <p class="sim-desc">Intercambio de mensajes de señalización para el establecimiento y gestión de sesiones de Voz sobre IP.</p>
                 </div>
-                <a href="./sip/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 07: SIP', './sip/index.html', 'sip')">🔒 Acceder / NIP</button>
             </div>
 
             <!-- 8. TDM -->
@@ -306,16 +402,126 @@
                     <h2 class="sim-title">Multiplexores - División de Tiempo (TDM)</h2>
                     <p class="sim-desc">Visualización del proceso de multiplexación síncrona y asignación de ranuras de tiempo (time slots).</p>
                 </div>
-                <a href="./tdm/index.html" class="btn-access">🔒 Acceder / NIP</a>
+                <button class="btn-access" onclick="abrirModalAuth('Simulador 08: TDM', './tdm/index.html', 'tdm')">🔒 Acceder / NIP</button>
             </div>
 
         </div>
     </main>
+
+    <!-- MODAL DE AUTENTICACIÓN -->
+    <div id="authModalOverlay" class="modal-overlay">
+        <div class="modal-card">
+            <button class="modal-close" onclick="cerrarModalAuth()">&times;</button>
+            <h2>Ingreso al Simulador</h2>
+            <div id="modalSimTitle" class="modal-sim-name">Simulador</div>
+            <form onsubmit="procesarValidacion(event)">
+                <div class="input-group">
+                    <input type="password" id="pinInput" placeholder="Escribe la clave de clase" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-submit">Ingresar</button>
+                <div id="errorMsg" class="error-message">Clave incorrecta para este grupo.</div>
+            </form>
+        </div>
+    </div>
 
     <!-- PIE DE PÁGINA -->
     <footer>
         <p><span>WMM</span> • eduapps.bid — Plataforma Educativa Personal</p>
     </footer>
 
+    <!-- LOGICA DE SEGURIDAD SHA-256 -->
+    <script>
+        // HASHES SHA-256 DE TODOS LOS SIMULADORES (GRUPOS 5SA, 5SB, 5SC + LLAVE MAESTRA GENERAL)
+        const MASTER_GENERAL_HASH = "e5ea31e61dd82a49c771fe23588fc3871bd8004cb74aacc22f326cf3278f42c5"; // wmm0773
+
+        const BASE_SEGURIDAD = {
+            hamming: [
+                "71f7090f5818047039e912072becd18dd3cde1a9b05e33bf643392e2e1a29461", // HMM5SA829
+                "a45bcbb3165168d72f943b1d2fedaa2ca5badf93c4abdbdbab52b83d83f2908e", // HMM5SB401
+                "ce0f394981aa9538e52fa505aadb91d3e0e3312d0bbbbba3cfb05cfead4737c5"  // HMM5SC715
+            ],
+            parada_espera: [
+                "9694e0fa4b2f729b422ada6b908c18135bc8cdeafb3a6e72a337931e933a6a84", // PYE5SA314
+                "f355534344334edcbd442456eaf06fbcd53c9ebcf5b747956916fa4bf993bd8f", // PYE5SB902
+                "ab46053d13007a6dfbe28ff11d2f9f97f26d58dddb8eae57a2653e55be4c5cd2"  // PYE5SC118
+            ],
+            ventana_deslizante: [
+                "609000e8361aec5a4c838ab4b453b15dcd6e00a390a8853916799615b10fff23", // VDS5SA552
+                "60f3e831a5a43f91aad438aef0dbe313943ab15f7dc2de92845c266b9ff270b1", // VDS5SB630
+                "1562035d5e007089b267009dcdadc973e1b1afe6fdd1f45cc76a6592960cdf5f"  // VDS5SC884
+            ],
+            modulacion_8qam: [
+                "faa24e6ff2e015773a7b929c2a26a422551f4be0b43a126bfb7a06057c2e93fa", // QAM5SA109
+                "16bc5013f7d67f3cb595066ffd093245cc7b6a22b34acdd8f10f1b9a7d09be91", // QAM5SB773
+                "b5a54e966e308c607ac85c88f0ba95f4c94b9631bc8e80d97037298e39199da8"  // QAM5SC412
+            ],
+            codificacion_linea: [
+                "5a9d41026f10e6faf89fcd6eaac4a5bb6b913430886825570458f3535300af14", // CDL5SA663
+                "06023d8a989d2da6644cbf945e5c5b7420d3e09607c176f8046e879e74a4049e", // CDL5SB219
+                "27922ac35b592828f9915524eb1bf4fee794b74d9a1f776b8faa6d78d4354b26"  // CDL5SC505
+            ],
+            ss7: [
+                "339c6d45fdbaaef37e485ba0c82c720f3f85dd51ba899e947069db037798b0b9", // SS75SA941
+                "5c66601eeaffb4e09109c5f2b3c30ed4359519930d3a492132841eea08e92e77", // SS75SB182
+                "a7339b37c6e8b6dd309326cad2d431a0672a5fc03318eeb2bc22b7688548faf4"  // SS75SC336
+            ],
+            sip: [
+                "4fcade05fcaf23e3f64c197eec355021d0901c9f7ddf0f06780465f33eefa3f2", // SIP5SA720
+                "5d698ff5cb820a91ccd542a6b6d5e79fb0537247f3376cb497eb52c092e8822a", // SIP5SB814
+                "5d550d84cc213930e5fc48740df002835390bb8bd10d3a341019608027afea7b"  // SIP5SC293
+            ],
+            tdm: [
+                "1f4e3611f3dd0a3b5dfca41f026e8538f3a8712dd77c8e34a8a130db21e6ff55", // TDM5SA404
+                "4059b0b17c630f45e408967d884f81472794a23130b1d28e65760ec3f7affb10", // TDM5SB361
+                "53a1ace04f8be5661830f0134f22f0bd98c80315777fa9f23671e8918c9e2cb3"  // TDM5SC627
+            ]
+        };
+
+        let targetUrl = "";
+        let targetKey = "";
+
+        // Función para calcular Hash SHA-256
+        async function calcularSHA256(texto) {
+            const buffer = new TextEncoder().encode(texto);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function abrirModalAuth(nombreSimulador, urlDestino, claveSimulador) {
+            targetUrl = urlDestino;
+            targetKey = claveSimulador;
+            document.getElementById('modalSimTitle').textContent = nombreSimulador;
+            document.getElementById('pinInput').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('authModalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('pinInput').focus(), 100);
+        }
+
+        function cerrarModalAuth() {
+            document.getElementById('authModalOverlay').style.display = 'none';
+            targetUrl = "";
+            targetKey = "";
+        }
+
+        async function procesarValidacion(event) {
+            event.preventDefault();
+            const inputPass = document.getElementById('pinInput').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+
+            if (!inputPass) return;
+
+            const inputHash = await calcularSHA256(inputPass);
+            const hashesPermitidos = BASE_SEGURIDAD[targetKey] || [];
+
+            // Validar si el hash ingresado coincide con los 3 grupos o la llave general
+            if (hashesPermitidos.includes(inputHash) || inputHash === MASTER_GENERAL_HASH) {
+                errorMsg.style.display = 'none';
+                window.location.href = targetUrl;
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        }
+    </script>
 </body>
 </html>
